@@ -7,14 +7,14 @@
 ```mermaid
 flowchart LR
   subgraph GitHub
-    A[💡 Idea] -->|app-idea template| B[Issue]
-    B -->|webhook / poll| C
+    A[Idea] -->|app-idea template| B[Issue]
+    B -->|poll| C
   end
 
   subgraph GCE [GCE VM]
-    C[Hermes Kanban<br/>orchestration] -->|dispatch| D[Worker]
-    D -->|pi -p "implement"| E[pi agent<br/>execution]
-    E -->|read/bash/edit/write| F[projects/&lt;name&gt;/]
+    C[Hermes Kanban] -->|dispatch| D[Worker]
+    D -->|pi -p implement| E[pi agent]
+    E -->|read bash edit write| F[projects/name/]
   end
 
   subgraph Model
@@ -35,12 +35,12 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  A[💡 Idea] -->|GitHub Issue| B[📋 app-idea]
-  B -->|create-project.sh| C[📁 projects/<name>/]
-  C -->|Kanban card| D[Hermes Worker]
-  D -->|pi agent| E[✨ Implement]
-  E -->|git commit + gh pr| F[📦 Pull Request]
-  F -->|prototype done| G[独立リポジトリ]
+  A[Idea] -->|GitHub Issue| B[app-idea]
+  B -->|create-project.sh| C[projects/name/]
+  C -->|Kanban card| D[Worker]
+  D -->|pi agent| E[Implement]
+  E -->|commit + pr| F[Pull Request]
+  F -->|prototype done| G[独立 repo]
 ```
 
 ### Step-by-Step
