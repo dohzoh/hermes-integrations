@@ -1,0 +1,69 @@
+name: App Idea Scaffold
+
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  scaffold:
+    if: contains(github.event.issue.labels.*.name, 'app-idea')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract project name
+        id: extract
+        run: |
+          TITLE="${{ github.event.issue.title }}"
+          NAME=$(echo "$TITLE" \
+            | sed 's/\[App\] *//' \
+            | tr '[:upper:]' '[:lower:]' \
+            | tr ' ' '-' \
+            | tr -cd 'a-z0-9_-')
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Check if project already exists
+        id: check
+        run: |
+          if [ -d "projects/${{ steps.extract.outputs.name }}" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create project directory
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          bash scripts/create-project.sh "${{ steps.extract.outputs.name }}" \
+            --issue "${{ github.event.issue.html_url }}"
+
+      - name: Commit project
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add projects/
+          git commit -m "scaffold ${{ steps.extract.outputs.name }} from #${{ github.event.issue.number }}"
+          git push
+
+      - name: Comment on issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const name = '${{ steps.extract.outputs.name }}';
+            const exists = '${{ steps.check.outputs.exists }}' === 'true';
+            if (exists) {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `プロジェクト \`${name}\` は既に存在します。`
+              });
+            } else {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `✅ プロジェクト \`${name}\` を scaffold しました\n\`\`\`\nprojects/${name}/\n├── src/\n├── tests/\n├── docs/\n├── README.md\n└── .gitignore\n\`\`\`\nGCE 上の Hermes Kanban が検出次第、実装を開始します。`
+              });
+            }

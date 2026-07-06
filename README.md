@@ -8,25 +8,26 @@
 flowchart LR
   subgraph GitHub
     A[Idea] -->|app-idea template| B[Issue]
-    B -->|poll| C
+    B -->|Actions: scaffold| C[projects/name/]
   end
 
   subgraph GCE [GCE VM]
-    C[Hermes Kanban] -->|dispatch| D[Worker]
-    D -->|pi -p implement| E[pi agent]
-    E -->|read bash edit write| F[projects/name/]
+    D[poll-issues.sh] -->|kanban create| E[Hermes Kanban]
+    E -->|dispatch| F[Worker]
+    F -->|pi -p implement| G[pi agent]
   end
 
   subgraph Model
-    G[OpenCode Zen]
+    H[OpenCode Zen]
   end
 
-  E -->|tool calling| G
-  F -->|gh pr create| H[Pull Request]
+  G -->|tool calling| H
+  G -->|commit + pr| I[Pull Request]
 ```
 
 | レイヤー | コンポーネント | 役割 |
 |---|---|---|
+| **Trigger** | GitHub Actions | Issue 検出 → project scaffold + commit |
 | **Orchestration** | Hermes Agent (Kanban) | タスク管理、状態遷移、キューイング、リトライ |
 | **Execution** | pi agent | コード生成・編集・bash実行（tool calling 内蔵） |
 | **Model** | OpenCode Zen | 検証済みモデルを提供（function calling 安定） |
@@ -35,39 +36,45 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  A[Idea] -->|GitHub Issue| B[app-idea]
-  B -->|create-project.sh| C[projects/name/]
-  C -->|Kanban card| D[Worker]
-  D -->|pi agent| E[Implement]
+  A[Idea] -->|app-idea template| B[Issue]
+  B -->|Actions| C[projects/name/]
+  C -->|poll-issues.sh| D[Kanban]
+  D -->|Worker + pi| E[Implement]
   E -->|commit + pr| F[Pull Request]
-  F -->|prototype done| G[独立 repo]
+  F -->|done| G[独立 repo]
 ```
 
 ### Step-by-Step
 
 1. **Idea** — GitHub Issue を `app-idea` テンプレートで投稿
-2. **Scaffold** — 手動またはスクリプトでプロジェクトディレクトリを作成
-   ```bash
-   ./scripts/create-project.sh my-app --issue <issue_url>
-   ```
-3. **Enqueue** — Hermes Kanban にタスクとして追加（手動または Issue poll 経由）
-   ```bash
-   hermes kanban create "my-app を実装" --body "Issue #N の内容" --assignee worker
-   ```
-4. **Dispatch** — Worker がタスクを取得。pi-agent skill の指示に従い pi を起動
-5. **PR** — 実装完了後、git commit → gh pr create
-6. **Extract** — プロトタイプ完成後、独立リポジトリに移行
+2. **Scaffold (auto)** — GitHub Actions がラベルを検出し、`create-project.sh` を実行 → `projects/` にコミット
+3. **Queue (auto)** — GCE の cron (`poll-issues.sh`) が未処理 Issue を Kanban に追加
+4. **Implement (auto)** — Hermes Worker がタスクを取得 → pi agent が実装・テスト・commit・PR
+5. **Extract** — プロトタイプ完成後、独立リポジトリに移行
+
+手動実行も可能:
+
+```bash
+# scaffold
+./scripts/create-project.sh my-app --issue <issue_url>
+
+# kanban enqueue
+hermes kanban create "my-app を実装" --body "Issue #N" --assignee worker
+```
 
 ## 構成
 
 ```
 hermes-integrations/
-├── .github/ISSUE_TEMPLATE/
-│   └── app-idea.md              # アプリ案のIssueテンプレート
+├── .github/
+│   ├── ISSUE_TEMPLATE/
+│   │   └── app-idea.md           # アプリ案のIssueテンプレート
+│   └── workflows/
+│       └── app-idea.yml          # Issue → scaffold (Actions)
 ├── scripts/
-│   ├── create-project.sh        # プロジェクト雛形生成
-│   └── poll-issues.sh           # Issue → Kanban 同期 (cron用)
-├── projects/                    # 各プロジェクト
+│   ├── create-project.sh         # プロジェクト雛形生成
+│   └── poll-issues.sh            # Issue → Kanban 同期 (GCE cron)
+├── projects/                     # 各プロジェクト
 │   └── <name>/
 │       ├── src/
 │       ├── tests/
@@ -76,6 +83,73 @@ hermes-integrations/
 │       └── .gitignore
 └── README.md
 ```
+
+---
+
+## GitHub Actions
+
+Issue に `app-idea` ラベルが付与された時（テンプレート投稿時または後付）に起動。
+
+**`.github/workflows/app-idea.yml`**:
+
+```yaml
+name: App Idea Scaffold
+
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  scaffold:
+    if: contains(github.event.issue.labels.*.name, 'app-idea')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract project name
+        id: extract
+        run: |
+          TITLE="${{ github.event.issue.title }}"
+          NAME=$(echo "$TITLE" \
+            | sed 's/\[App\] *//' \
+            | tr '[:upper:]' '[:lower:]' \
+            | tr ' ' '-' \
+            | tr -cd 'a-z0-9_-')
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Create project directory
+        run: |
+          bash scripts/create-project.sh "${{ steps.extract.outputs.name }}" \
+            --issue "${{ github.event.issue.html_url }}"
+
+      - name: Commit project
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add projects/
+          git commit -m "scaffold ${{ steps.extract.outputs.name }} from #${{ github.event.issue.number }}"
+          git push
+
+      - name: Comment on issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const name = '${{ steps.extract.outputs.name }}';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `✅ プロジェクト \`${name}\` を scaffold しました\n\`\`\`\nprojects/${name}/\n├── src/\n├── tests/\n├── docs/\n├── README.md\n└── .gitignore\n\`\`\`\nGCE の Hermes Kanban がタスクを検出次第、実装を開始します。`
+            });
+```
+
+### トリガー条件
+
+| Event | 動作 |
+|---|---|
+| Issue opened (テンプレート使用時) | 自動起動（`app-idea` ラベル付き） |
+| 後から `app-idea` ラベル追加 | 起動 |
+| Issue 編集 | 起動しない（再実行したい場合はラベルの付け直し） |
 
 ---
 
@@ -100,7 +174,6 @@ curl -fsSL https://bun.sh/install | bash
 ### OpenCode Zen の API キー設定
 
 ```bash
-# ~/.bashrc または .env
 export OPENCODE_API_KEY="sk-..."
 export GITHUB_TOKEN="ghp_..."
 ```
@@ -121,7 +194,7 @@ hermes gateway start
 
 ---
 
-## Hermes 設定詳細（GCE 実機に適用する内容）
+## Hermes 設定詳細
 
 ### Worker プロファイル設定
 
@@ -154,11 +227,9 @@ terminal:
   timeout: 600
 ```
 
-> **Worker のモデル選定**: Worker 自身はタスク解釈と `terminal` + `kanban_*` ツールの呼び出ししか行わないため、`deepseek-v4-flash` のような軽量モデルで十分。コード生成の品質は pi agent 側のモデルに依存する。
+> Worker 自身はタスク解釈と `terminal` + `kanban_*` の呼び出しのみ。`deepseek-v4-flash` で十分。コード品質は pi 側のモデルに依存。
 
 ### pi-agent SKILL.md
-
-Hermes Worker が pi の呼び出し方法を理解するためのスキルファイル。
 
 **作成先**: `~/.hermes/skills/devops/pi-agent/SKILL.md`
 
@@ -187,10 +258,7 @@ pi は read / bash / edit / write のツールを持つ AI コーディングエ
 ## 基本コマンド
 
 ```bash
-# ワンショット実行（非対話）
 pi -p "タスク内容" --provider opencode --model opencode/deepseek-v4-flash
-
-# 作業ディレクトリを指定
 pi -p "タスク" --workdir "$HERMES_KANBAN_WORKSPACE"
 ```
 
@@ -199,12 +267,8 @@ pi -p "タスク" --workdir "$HERMES_KANBAN_WORKSPACE"
 1. `kanban_show()` でタスクの title / body を読む
 2. タスク内容から pi に渡すプロンプトを構築
 3. `terminal(command="pi -p '...'", workdir="$HERMES_KANBAN_WORKSPACE")` を実行
-4. 実行結果を確認
-5. 必要に応じて追加入力:
-   ```bash
-   pi -p "テストを実行して結果を教えて"
-   ```
-6. `kanban_complete(summary=..., metadata={"changed_files": [...]})` で完了
+4. 実行結果を確認。失敗したらモデルを変えてリトライ
+5. `kanban_complete(summary=..., metadata={"changed_files": [...]})` で完了
 
 ## プロンプトテンプレート
 
@@ -212,9 +276,7 @@ pi -p "タスク" --workdir "$HERMES_KANBAN_WORKSPACE"
 pi -p "
 仕様: {task_body}
 
-作業ディレクトリ: {workspace}
-
-以下を実行してください:
+以下を実行:
 1. 必要なファイルを作成・編集
 2. テストを書いて実行
 3. git add + git commit
@@ -224,16 +286,16 @@ pi -p "
 
 ## 注意
 
-- `clarify` は使わない（ヘッドレス実行、ユーザーは不在）
+- `clarify` は使わない（ヘッドレス実行）
 - 判断が必要な場合は `kanban_comment()` + `kanban_block()` でブロック
-- pi が失敗した場合、ログを確認して必要ならモデルを変えてリトライ
 ```
 
 ---
 
-## Issue Poll（cron 用スクリプト）
+## Issue Poll（GCE cron `poll-issues.sh`）
 
 GitHub Issue を定期的にチェックし、未処理の `app-idea` Issue を Kanban に追加する。
+Project scaffold は既に Actions が済ませているので、`poll-issues.sh` は Kanban キューイングのみ担当。
 
 **`scripts/poll-issues.sh`**:
 
@@ -241,7 +303,6 @@ GitHub Issue を定期的にチェックし、未処理の `app-idea` Issue を 
 #!/usr/bin/env bash
 set -euo pipefail
 
-# 未処理の app-idea Issue を取得
 gh issue list --label app-idea --state open --json number,title,body \
   | jq -c '.[]' | while read -r issue; do
 
@@ -249,32 +310,28 @@ gh issue list --label app-idea --state open --json number,title,body \
   TITLE=$(echo "$issue" | jq -r '.title')
   BODY=$(echo "$issue" | jq -r '.body')
 
-  # 既に Kanban に存在するかチェック（task title に Issue 番号を含める）
+  # 既に Kanban にあればスキップ
   if hermes kanban list --status todo,ready --json \
     | jq -e ".[] | select(.title | contains(\"#$NUMBER\"))" > /dev/null 2>&1; then
     continue
   fi
 
-  # プロジェクト名を抽出 or 生成
   PROJECT_NAME=$(echo "$TITLE" | sed 's/\[App\] //' | tr 'A-Z' 'a-z' | tr ' ' '-')
 
-  # プロジェクトディレクトリがなければ作成
+  # project ディレクトリがなければ作成（念のため）
   if [ ! -d "projects/$PROJECT_NAME" ]; then
-    ./scripts/create-project.sh "$PROJECT_NAME" --issue "https://github.com/$GITHUB_REPOSITORY/issues/$NUMBER"
+    ./scripts/create-project.sh "$PROJECT_NAME" \
+      --issue "https://github.com/$GITHUB_REPOSITORY/issues/$NUMBER"
   fi
 
-  # Kanban にタスク追加
   hermes kanban create \
     "$PROJECT_NAME を実装 (#$NUMBER)" \
     --body "$BODY" \
     --assignee worker
-
-  # Issue にコメント
-  gh issue comment "$NUMBER" --body "🤖 Kanban タスクを作成しました"
 done
 ```
 
-**cron 設定**（`crontab -e`）:
+**cron**:
 
 ```cron
 */5 * * * * cd /path/to/hermes-integrations && bash scripts/poll-issues.sh >> /var/log/poll-issues.log 2>&1
@@ -310,13 +367,7 @@ pi -p "..." --provider opencode --model opencode/claude-sonnet-5
 Qwen3.5-9B / Gemma-4-26B などローカルモデルは function calling が不安定で、
 `execute\n ls -la` のようにコマンドをテキストで書いて終わってしまう。
 
-**原因**: 小規模ローカルモデルは tool use の指示を正しく解釈できず、テキスト応答に退避する。
-
 **対策**: Hermes Kanban はタスク管理に専念させ、実際のコード生成は pi agent（→ OpenCode Zen）に委譲するハイブリッド構成。pi は独自の tool calling 機構を持ち、モデルに依存しない安定動作が可能。
-
-### Worker モデルが弱い場合
-
-Worker 自身もツール呼び出しが必要。`deepseek-v4-flash-free` でも基本ツール（terminal, kanban_*）はこなせるが、不安定な場合は Worker に `claude-sonnet-5` を使う。
 
 ---
 
