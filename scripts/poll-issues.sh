@@ -10,12 +10,12 @@ gh issue list --label app-idea --state open --json number,title,body \
   TITLE=$(echo "$issue" | jq -r '.title')
   BODY=$(echo "$issue" | jq -r '.body')
 
-  if hermes kanban list --status todo,ready --json \
+  if hermes kanban list --json \
     | jq -e ".[] | select(.title | contains(\"#$NUMBER\"))" > /dev/null 2>&1; then
     continue
   fi
 
-  PROJECT_NAME=$(echo "$TITLE" | sed 's/\[App\] //' | tr 'A-Z' 'a-z' | tr ' ' '-')
+  PROJECT_NAME=$(echo "$TITLE" | sed 's/\[App\] *//' | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9_-')
 
   if [ ! -d "projects/$PROJECT_NAME" ]; then
     bash scripts/create-project.sh "$PROJECT_NAME" \
