@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+HERMES="${HERMES:-$HOME/.hermes/hermes-agent/venv/bin/hermes}"
 GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-dohzoh/hermes-integrations}"
 
 gh issue list --label app-idea --state open --json number,title,body \
@@ -10,7 +11,7 @@ gh issue list --label app-idea --state open --json number,title,body \
   TITLE=$(echo "$issue" | jq -r '.title')
   BODY=$(echo "$issue" | jq -r '.body')
 
-  if hermes kanban list --json \
+  if $HERMES kanban list --json \
     | jq -e ".[] | select(.title | contains(\"#$NUMBER\"))" > /dev/null 2>&1; then
     continue
   fi
@@ -22,7 +23,7 @@ gh issue list --label app-idea --state open --json number,title,body \
       --issue "https://github.com/$GITHUB_REPOSITORY/issues/$NUMBER"
   fi
 
-  hermes kanban create \
+  $HERMES kanban create \
     "$PROJECT_NAME を実装 (#$NUMBER)" \
     --body "$BODY" \
     --assignee worker
