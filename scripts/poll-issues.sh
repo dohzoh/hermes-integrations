@@ -26,5 +26,5 @@ gh issue list --label app-idea --state open --json number,title,body \
   $HERMES kanban create \
     "$PROJECT_NAME を実装 (#$NUMBER)" \
     --body "$BODY" \
-    --assignee worker
+    --assignee hermes_worker
 done
