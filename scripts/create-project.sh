@@ -56,6 +56,9 @@ fi
 
 # Create directory structure
 mkdir -p "$PROJECT_DIR"/{src,tests,docs}
+touch "$PROJECT_DIR"/src/.gitkeep
+touch "$PROJECT_DIR"/tests/.gitkeep
+touch "$PROJECT_DIR"/docs/.gitkeep
 
 # Create .gitignore
 cat > "$PROJECT_DIR/.gitignore" <<GITIGNORE
