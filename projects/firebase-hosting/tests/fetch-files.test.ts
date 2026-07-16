@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { getLatestVersion } from '../src/fetch-files.js';
 
 describe('getLatestVersion', () => {
@@ -18,9 +18,11 @@ describe('getLatestVersion', () => {
     
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({
-        releases: [{ version: { name: 'sites/my-site/versions/v123' } }]
-      })
+      json: async () => {
+        return {
+          releases: [{ version: { name: 'sites/my-site/versions/v123' } }]
+        }
+      }
     } as Response);
 
     const result = await getLatestVersion('my-site');
@@ -38,7 +40,9 @@ describe('getLatestVersion', () => {
 
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ releases: [] })
+      json: async () => {
+        return { releases: [] }
+      }
     } as Response);
 
     await expect(getLatestVersion('my-site')).rejects.toThrow('No releases found');
