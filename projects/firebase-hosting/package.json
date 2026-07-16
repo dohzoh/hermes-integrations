@@ -1,0 +1,25 @@
+{
+  "name": "firebase-hosting-fetch",
+  "version": "1.0.0",
+  "description": "Fetch all files from a Firebase Hosting site with Unicode/Japanese support",
+  "type": "module",
+  "bin": "./dist/cli.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "firebase-tools": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
