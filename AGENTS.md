@@ -19,7 +19,8 @@ GitHub Issue (app-idea template)
 GitHub Actions (app-idea.yml)
   │  └─ Extracts project name from title
   │  └─ Runs scripts/create-project.sh
-  │  └─ Commits scaffold to projects/<name>/
+  │  └─ Runs scripts/generate-spec.sh (OpenRouter API → spec.md)
+  │  └─ Commits scaffold + spec to projects/<name>/
   │  └─ Comments on Issue with status
   │
   ▼
@@ -31,14 +32,14 @@ GCE VM (cron: poll-issues.sh)
   ▼
 Hermes Kanban → Worker → pi agent
      └─ Worker reads task, delegates to `pi -p "..."` (AI coding agent)
-     └─ pi agent implements: edit files, write tests, commit, PR
+     └─ pi agent reads spec.md, implements: edit files, write tests, commit, PR
 ```
 
 ### Key Layers
 
 | Layer | Component | Role |
 |-------|-----------|------|
-| **Trigger** | GitHub Actions | Detect Issue → scaffold project + commit |
+| **Trigger** | GitHub Actions | Detect Issue → scaffold project + generate spec via OpenRouter API |
 | **Orchestration** | Hermes Agent (Kanban) | Task queue, state machine, retry, worker dispatch |
 | **Execution** | pi agent | Code generation, editing, bash, git operations |
 | **Model** | OpenCode Zen | LLM backend with stable function calling |
@@ -51,6 +52,7 @@ Hermes Kanban → Worker → pi agent
 |------|---------|
 | `scripts/` | Infrastructure scripts for scaffolding and polling |
 | `scripts/create-project.sh` | Creates a new project directory structure |
+| `scripts/generate-spec.sh` | Generates implementation spec from Issue via OpenRouter API |
 | `scripts/poll-issues.sh` | Polls GitHub Issues → enqueues Kanban cards (GCE cron) |
 | `.github/workflows/` | GitHub Actions automation |
 | `.github/ISSUE_TEMPLATE/` | Issue templates for `app-idea` |
@@ -79,6 +81,14 @@ Hermes Kanban → Worker → pi agent
 hermes kanban create "implement my-project (#42)" \
   --body "Description..." \
   --assignee hermes_worker
+```
+
+### Generate spec from Issue (manual)
+
+```bash
+export OPENROUTER_API_KEY="sk-..."
+ISSUE_BODY="$(gh issue view 42 --json body -q .body)"
+ISSUE_BODY="$ISSUE_BODY" bash scripts/generate-spec.sh my-project 42
 ```
 
 ### Working inside a project
@@ -137,10 +147,10 @@ GITHUB_REPOSITORY="owner/repo" bash scripts/poll-issues.sh
 | File | Purpose |
 |------|---------|
 | `scripts/create-project.sh` | Project scaffolding script |
+| `scripts/generate-spec.sh` | Issue → spec generation via OpenRouter API |
 | `scripts/poll-issues.sh` | GitHub Issue → Kanban poller (cron target) |
-| `.github/workflows/app-idea.yml` | Actions workflow: Issue → scaffold |
+| `.github/workflows/app-idea.yml` | Actions workflow: Issue → scaffold + spec |
 | `.github/ISSUE_TEMPLATE/app-idea.md` | Issue template for new project ideas |
-| `projects/github-trend-twitterx/github_trend_twitterx.py` | Reference project: Python + Playwright automation |
 
 ---
 
@@ -153,6 +163,7 @@ GITHUB_REPOSITORY="owner/repo" bash scripts/poll-issues.sh
 | **GitHub CLI (`gh`)** | Issue polling, PR creation | `sudo apt install gh` |
 | **Bun** | pi agent runtime | `curl -fsSL https://bun.sh/install \| bash` |
 | **OpenCode Zen** | LLM provider | API key via `OPENCODE_API_KEY` env var |
+| **OpenRouter** | Spec generation (Actions) | API key via `OPENROUTER_API_KEY` GitHub Secret |
 | **Playwright** | Browser automation (reference project) | `pip install playwright && playwright install chromium` |
 
 **No monorepo-level language runtime** — each project defines its own. The infra layer (scripts, workflows) is bash + YAML.
