@@ -19,12 +19,14 @@ TITLE=$(echo "$READY" | jq -r '.[0].title // empty')
 EXTERNAL_REF=$(echo "$READY" | jq -r '.[0].external_ref // empty')
 
 ISSUE_NUMBER=""
-if [[ "$EXTERNAL_REF" =~ ^gh-([0-9]+)$ ]]; then
+if [[ "$EXTERNAL_REF" =~ /issues/([0-9]+)$ ]]; then
+  ISSUE_NUMBER="${BASH_REMATCH[1]}"
+elif [[ "$EXTERNAL_REF" =~ ^gh-([0-9]+)$ ]]; then
   ISSUE_NUMBER="${BASH_REMATCH[1]}"
 fi
 
 PROJECT_NAME=$(echo "$TITLE" \
-  | sed 's/を実装.*//' \
+  | sed 's/\[App\] *//' \
   | tr '[:upper:]' '[:lower:]' \
   | tr ' ' '-' \
   | tr -cd 'a-z0-9_-')
