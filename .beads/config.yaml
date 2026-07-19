@@ -67,6 +67,9 @@
 
 sync.remote: "git+ssh://git@github.com/dohzoh/hermes-integrations.git"
 repos:
-  primary: "."
-  additional:
-    - "/home/dozo/.beads-planning"
+    primary: "."
+    additional:
+        - "/home/dozo/.beads-planning"
+routing:
+    mode: disabled
+    contributor: ""
