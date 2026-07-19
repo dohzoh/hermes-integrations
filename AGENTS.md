@@ -4,9 +4,9 @@
 
 **hermes-integrations** is a monorepo for small, experimental projects (prototypes, tools, automations). Each project lives under `projects/<name>/` as an independent unit. Once a prototype reaches completion, it graduates to its own standalone repository.
 
-The monorepo itself is the **infrastructure layer**: scaffolding scripts, CI/CD pipelines, and Kanban orchestration that automate the flow from "idea" → "scaffolded project" → "implemented prototype" → "pull request."
+The monorepo itself is the **infrastructure layer**: scaffolding scripts, CI/CD pipelines, and Beads orchestration that automate the flow from "idea" → "scaffolded project" → "implemented prototype" → "pull request."
 
-The entire pipeline is designed for **fully automated, AI-driven development** using Hermes Agent (Kanban) + `pi` agent + OpenCode Zen.
+The entire pipeline is designed for **fully automated, AI-driven development** using Beads (`bd`) + `pi` agent + OpenCode Zen.
 
 ---
 
@@ -19,27 +19,28 @@ GitHub Issue (app-idea template)
 GitHub Actions (app-idea.yml)
   │  └─ Extracts project name from title
   │  └─ Runs scripts/create-project.sh
-  │  └─ Commits scaffold to projects/<name>/
+  │  └─ Runs scripts/generate-spec.sh (OpenRouter API → spec.md)
+  │  └─ Commits scaffold + spec to projects/<name>/
   │  └─ Comments on Issue with status
   │
   ▼
-GCE VM (cron: poll-issues.sh)
-  │  └─ Queries open `app-idea` Issues
-  │  └─ Creates Kanban card if not already queued
-  │  └─ Assigns to hermes_worker
+GCE VM (cron: scripts/dispatch-ready.sh)
+  │  └─ Runs bd github pull (syncs GitHub Issues → Beads)
+  │  └─ Runs bd ready --claim (finds unblocked work)
+  │  └─ Dispatches to pi agent
   │
   ▼
-Hermes Kanban → Worker → pi agent
-     └─ Worker reads task, delegates to `pi -p "..."` (AI coding agent)
-     └─ pi agent implements: edit files, write tests, commit, PR
+pi agent
+   └─ Reads spec.md, implements: edit files, write tests, commit, PR
+   └─ bd close on completion
 ```
 
 ### Key Layers
 
 | Layer | Component | Role |
 |-------|-----------|------|
-| **Trigger** | GitHub Actions | Detect Issue → scaffold project + commit |
-| **Orchestration** | Hermes Agent (Kanban) | Task queue, state machine, retry, worker dispatch |
+| **Trigger** | GitHub Actions | Detect Issue → scaffold project + generate spec via OpenRouter API |
+| **Orchestration** | Beads (`bd`) | Dependency-aware issue tracker, ready-work dispatch, Dolt-backed state |
 | **Execution** | pi agent | Code generation, editing, bash, git operations |
 | **Model** | OpenCode Zen | LLM backend with stable function calling |
 
@@ -49,9 +50,10 @@ Hermes Kanban → Worker → pi agent
 
 | Path | Purpose |
 |------|---------|
-| `scripts/` | Infrastructure scripts for scaffolding and polling |
+| `scripts/` | Infrastructure scripts for scaffolding and dispatch |
 | `scripts/create-project.sh` | Creates a new project directory structure |
-| `scripts/poll-issues.sh` | Polls GitHub Issues → enqueues Kanban cards (GCE cron) |
+| `scripts/generate-spec.sh` | Generates implementation spec from Issue via OpenRouter API |
+| `scripts/dispatch-ready.sh` | Syncs GitHub Issues → Beads, dispatches ready work to pi (GCE cron) |
 | `.github/workflows/` | GitHub Actions automation |
 | `.github/ISSUE_TEMPLATE/` | Issue templates for `app-idea` |
 | `projects/` | Individual project directories (each self-contained) |
@@ -73,24 +75,36 @@ Hermes Kanban → Worker → pi agent
 ./scripts/create-project.sh my-project --issue https://github.com/owner/repo/issues/42
 ```
 
-### Manual Kanban enqueue
+### Generate spec from Issue (manual)
 
 ```bash
-hermes kanban create "implement my-project (#42)" \
-  --body "Description..." \
-  --assignee hermes_worker
+export OPENROUTER_API_KEY="sk-..."
+ISSUE_BODY="$(gh issue view 42 --json body -q .body)"
+ISSUE_BODY="$ISSUE_BODY" bash scripts/generate-spec.sh my-project 42
+```
+
+### Dispatch ready work (manual)
+
+```bash
+bash scripts/dispatch-ready.sh
+```
+
+### Beads commands
+
+```bash
+bd init                          # Initialize Beads in repo
+bd github pull                   # Sync GitHub Issues → Beads
+bd ready --json                  # List ready (unblocked) work
+bd ready --claim --json          # Atomically claim next ready issue
+bd create "Task" -t task -p 1   # Create a new issue
+bd show bd-42 --json             # Show issue details
+bd close bd-42 --reason "Done"   # Close an issue
+bd dolt push                     # Sync database to remote
 ```
 
 ### Working inside a project
 
 Each project is independent with its own language, framework, and tooling. There are no monorepo-wide build/test commands — run project-specific commands inside `projects/<name>/`.
-
-### Infrastructure scripts
-
-```bash
-# Simulate issue polling (dry run against local state)
-GITHUB_REPOSITORY="owner/repo" bash scripts/poll-issues.sh
-```
 
 ---
 
@@ -111,16 +125,16 @@ GITHUB_REPOSITORY="owner/repo" bash scripts/poll-issues.sh
 ### Workflows & automation
 
 - Issue → scaffold pipeline: GitHub Actions, triggered on `issues: [opened, labeled]` when label `app-idea` present.
-- Kanban → implement pipeline: GCE cron runs `poll-issues.sh`, Hermes Worker delegates to `pi` agent.
+- Ready-work → implement pipeline: GCE cron runs `dispatch-ready.sh`, which syncs GitHub Issues via `bd github pull`, finds ready work via `bd ready --claim`, and dispatches to pi agent.
 - Commit messages from automation: `scaffold <name> from #<N>`, `implement <name> (#<N>)`.
 
-### AI agent patterns (Hermes Worker + pi)
+### AI agent patterns (Beads + pi)
 
-- Worker **never writes code directly** — it reads task details, crafts a prompt, and delegates to `pi` via `terminal(command="pi -p '...'")`.
-- Worker uses `kanban_show()`, `kanban_complete()`, `kanban_block()`, `kanban_comment()` for lifecycle.
+- `dispatch-ready.sh` claims a Beads issue atomically via `bd ready --claim`, then dispatches to `pi -p "..." --workdir projects/<name>`.
+- `pi` agent reads `spec.md`, implements the feature, writes tests, commits, creates PR.
+- On success, `dispatch-ready.sh` runs `bd close` with the issue ID.
+- On failure, the issue stays `in_progress` (not closed); next cron run will skip it since it's already claimed.
 - `pi` agent uses `--provider opencode --model opencode/deepseek-v4-flash`.
-- `pi` runs with `--workdir $HERMES_KANBAN_WORKSPACE` (scoped to the project).
-- Failed tasks: retry with a different model before blocking.
 
 ### Python project pattern (reference: `github-trend-twitterx`)
 
@@ -137,10 +151,10 @@ GITHUB_REPOSITORY="owner/repo" bash scripts/poll-issues.sh
 | File | Purpose |
 |------|---------|
 | `scripts/create-project.sh` | Project scaffolding script |
-| `scripts/poll-issues.sh` | GitHub Issue → Kanban poller (cron target) |
-| `.github/workflows/app-idea.yml` | Actions workflow: Issue → scaffold |
+| `scripts/generate-spec.sh` | Issue → spec generation via OpenRouter API |
+| `scripts/dispatch-ready.sh` | Beads sync + ready-work dispatch (cron target) |
+| `.github/workflows/app-idea.yml` | Actions workflow: Issue → scaffold + spec |
 | `.github/ISSUE_TEMPLATE/app-idea.md` | Issue template for new project ideas |
-| `projects/github-trend-twitterx/github_trend_twitterx.py` | Reference project: Python + Playwright automation |
 
 ---
 
@@ -148,11 +162,12 @@ GITHUB_REPOSITORY="owner/repo" bash scripts/poll-issues.sh
 
 | Tool | Purpose | Notes |
 |------|---------|-------|
-| **Hermes Agent** | Kanban task orchestration | Installed via `curl -fsSL https://hermes-agent.sh/install \| sh` |
+| **Beads (`bd`)** | Issue tracking & orchestration | `curl -fsSL https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh \| bash` |
 | **pi agent** | AI coding agent (read/bash/edit/write) | Installed via `curl -fsSL https://pi.sh/install \| sh` |
 | **GitHub CLI (`gh`)** | Issue polling, PR creation | `sudo apt install gh` |
 | **Bun** | pi agent runtime | `curl -fsSL https://bun.sh/install \| bash` |
 | **OpenCode Zen** | LLM provider | API key via `OPENCODE_API_KEY` env var |
+| **OpenRouter** | Spec generation (Actions) | API key via `OPENROUTER_API_KEY` GitHub Secret |
 | **Playwright** | Browser automation (reference project) | `pip install playwright && playwright install chromium` |
 
 **No monorepo-level language runtime** — each project defines its own. The infra layer (scripts, workflows) is bash + YAML.
