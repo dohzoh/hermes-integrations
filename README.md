@@ -8,28 +8,27 @@
 flowchart LR
   subgraph GitHub
     A[Idea] -->|app-idea template| B[Issue]
-    B -->|Actions: scaffold| C[projects/name/]
+    B -->|Actions: scaffold + spec| C[projects/name/]
   end
 
   subgraph GCE [GCE VM]
-    D[poll-issues.sh] -->|kanban create| E[Hermes Kanban]
-    E -->|dispatch| F[Worker]
-    F -->|pi -p implement| G[pi agent]
+    D[dispatch-ready.sh] -->|bd github pull| E[Beads]
+    E -->|bd ready --claim| F[pi agent]
   end
 
   subgraph Model
     H[OpenCode Zen]
   end
 
-  G -->|tool calling| H
-  G -->|commit + pr| I[Pull Request]
+  F -->|tool calling| H
+  F -->|commit + pr| I[Pull Request]
 ```
 
 | レイヤー | コンポーネント | 役割 |
 |---|---|---|
-| **Trigger** | GitHub Actions | Issue 検出 → project scaffold + commit |
-| **Orchestration** | Hermes Agent (Kanban) | タスク管理、状態遷移、キューイング、リトライ |
-| **Execution** | pi agent | コード生成・編集・bash実行（tool calling 内蔵） |
+| **Trigger** | GitHub Actions | Issue 検出 → project scaffold + spec 生成 |
+| **Orchestration** | Beads (`bd`) | 依存関係対応のイシュートラッカー、ready work ディスパッチ |
+| **Execution** | pi agent | コード生成・編集・bash実行 |
 | **Model** | OpenCode Zen | 検証済みモデルを提供（function calling 安定） |
 
 ## ワークフロー
@@ -37,9 +36,9 @@ flowchart LR
 ```mermaid
 flowchart LR
   A[Idea] -->|app-idea template| B[Issue]
-  B -->|Actions| C[projects/name/]
-  C -->|poll-issues.sh| D[Kanban]
-  D -->|Worker + pi| E[Implement]
+  B -->|Actions| C[projects/name/ + spec.md]
+  C -->|bd github pull| D[Beads]
+  D -->|bd ready --claim| E[pi agent]
   E -->|commit + pr| F[Pull Request]
   F -->|done| G[独立 repo]
 ```
@@ -47,10 +46,11 @@ flowchart LR
 ### Step-by-Step
 
 1. **Idea** — GitHub Issue を `app-idea` テンプレートで投稿
-2. **Scaffold (auto)** — GitHub Actions がラベルを検出し、`create-project.sh` を実行 → `projects/` にコミット
-3. **Queue (auto)** — GCE の cron (`poll-issues.sh`) が未処理 Issue を Kanban に追加
-4. **Implement (auto)** — Hermes Worker がタスクを取得 → pi agent が実装・テスト・commit・PR
-5. **Extract** — プロトタイプ完成後、独立リポジトリに移行
+2. **Scaffold + Spec (auto)** — GitHub Actions が `create-project.sh` + `generate-spec.sh` を実行 → `projects/` にコミット
+3. **Sync (auto)** — GCE の cron (`dispatch-ready.sh`) が `bd github pull` で GitHub Issues → Beads に同期
+4. **Claim (auto)** — `bd ready --claim` で unblocked work を取得
+5. **Implement (auto)** — pi agent が spec.md を読み、実装・テスト・commit・PR
+6. **Extract** — プロトタイプ完成後、独立リポジトリに移行
 
 手動実行も可能:
 
@@ -58,8 +58,13 @@ flowchart LR
 # scaffold
 ./scripts/create-project.sh my-app --issue <issue_url>
 
-# kanban enqueue
-hermes kanban create "my-app を実装" --body "Issue #N" --assignee worker
+# spec 生成
+export OPENROUTER_API_KEY="sk-..."
+ISSUE_BODY="$(gh issue view 42 --json body -q .body)"
+ISSUE_BODY="$ISSUE_BODY" bash scripts/generate-spec.sh my-app 42
+
+# dispatch ready work
+bash scripts/dispatch-ready.sh
 ```
 
 ## 構成
@@ -68,19 +73,22 @@ hermes kanban create "my-app を実装" --body "Issue #N" --assignee worker
 hermes-integrations/
 ├── .github/
 │   ├── ISSUE_TEMPLATE/
-│   │   └── app-idea.md           # アプリ案のIssueテンプレート
+│   │   └── app-idea.md              # アプリ案のIssueテンプレート
 │   └── workflows/
-│       └── app-idea.yml          # Issue → scaffold (Actions)
+│       └── app-idea.yml             # Issue → scaffold + spec (Actions)
 ├── scripts/
-│   ├── create-project.sh         # プロジェクト雛形生成
-│   └── poll-issues.sh            # Issue → Kanban 同期 (GCE cron)
-├── projects/                     # 各プロジェクト
+│   ├── create-project.sh            # プロジェクト雛形生成
+│   ├── generate-spec.sh             # Issue → spec.md (OpenRouter API)
+│   └── dispatch-ready.sh            # Beads sync + ready work dispatch (GCE cron)
+├── projects/                        # 各プロジェクト
 │   └── <name>/
 │       ├── src/
 │       ├── tests/
 │       ├── docs/
+│       │   └── spec.md              # 実装スペック
 │       ├── README.md
 │       └── .gitignore
+├── AGENTS.md                        # AI エージェント向けガイドライン
 └── README.md
 ```
 
@@ -90,60 +98,7 @@ hermes-integrations/
 
 Issue に `app-idea` ラベルが付与された時（テンプレート投稿時または後付）に起動。
 
-**`.github/workflows/app-idea.yml`**:
-
-```yaml
-name: App Idea Scaffold
-
-on:
-  issues:
-    types: [opened, labeled]
-
-jobs:
-  scaffold:
-    if: contains(github.event.issue.labels.*.name, 'app-idea')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Extract project name
-        id: extract
-        run: |
-          TITLE="${{ github.event.issue.title }}"
-          NAME=$(echo "$TITLE" \
-            | sed 's/\[App\] *//' \
-            | tr '[:upper:]' '[:lower:]' \
-            | tr ' ' '-' \
-            | tr -cd 'a-z0-9_-')
-          echo "name=$NAME" >> "$GITHUB_OUTPUT"
-
-      - name: Create project directory
-        run: |
-          bash scripts/create-project.sh "${{ steps.extract.outputs.name }}" \
-            --issue "${{ github.event.issue.html_url }}"
-
-      - name: Commit project
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add projects/
-          git commit -m "scaffold ${{ steps.extract.outputs.name }} from #${{ github.event.issue.number }}"
-          git push
-
-      - name: Comment on issue
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const name = '${{ steps.extract.outputs.name }}';
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `✅ プロジェクト \`${name}\` を scaffold しました\n\`\`\`\nprojects/${name}/\n├── src/\n├── tests/\n├── docs/\n├── README.md\n└── .gitignore\n\`\`\`\nGCE の Hermes Kanban がタスクを検出次第、実装を開始します。`
-            });
-```
-
-### トリガー条件
+**トリガー条件:**
 
 | Event | 動作 |
 |---|---|
@@ -151,31 +106,55 @@ jobs:
 | 後から `app-idea` ラベル追加 | 起動 |
 | Issue 編集 | 起動しない（再実行したい場合はラベルの付け直し） |
 
+**処理内容:**
+
+1. `create-project.sh` でプロジェクトディレクトリを生成
+2. `generate-spec.sh` で OpenRouter API → `docs/spec.md` を生成
+3. `projects/` をコミット＆プッシュ
+4. Issue にコメントを投稿
+
 ---
 
 ## GCE セットアップ手順
 
-### 前提インストール
+### インストール
 
 ```bash
-# Hermes Agent
-curl -fsSL https://hermes-agent.sh/install | sh
+# Beads
+curl -fsSL https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh | bash
 
 # pi agent
 curl -fsSL https://pi.sh/install | sh
 
-# GitHub CLI
-sudo apt install gh
-
 # bun (pi のランタイム)
 curl -fsSL https://bun.sh/install | bash
+
+# GitHub CLI
+sudo apt install gh
+```
+
+### Beads 初期化
+
+```bash
+cd ~/Sources/hermes-integrations
+bd init --quiet
+```
+
+### GitHub 接続設定
+
+```bash
+# Fine-grained token (Issues: Read & Write)
+export GITHUB_TOKEN="ghp_..."
+
+bd config set github.owner "dohzoh"
+bd config set github.repo "hermes-integrations"
+bd github status    # 確認
 ```
 
 ### OpenCode Zen の API キー設定
 
 ```bash
 export OPENCODE_API_KEY="sk-..."
-export GITHUB_TOKEN="ghp_..."
 ```
 
 pi のデフォルト設定:
@@ -185,157 +164,55 @@ pi config set defaultProvider opencode
 pi config set defaultModel opencode/deepseek-v4-flash
 ```
 
-### Hermes Kanban 初期化
+### cron 登録
 
 ```bash
-hermes kanban init
-hermes gateway start
+crontab -e
+# 以下を追加:
+*/5 * * * * cd /home/dozo/Sources/hermes-integrations && bash scripts/dispatch-ready.sh >> /var/log/dispatch-ready.log 2>&1
 ```
 
 ---
 
-## Hermes 設定詳細
+## スクリプト
 
-### Worker プロファイル設定
+### `create-project.sh`
 
-**`~/.hermes/profiles/hermes_worker/profile.yaml`**:
-
-```yaml
-description: >
-  あなたは Worker です。与えられたタスクを pi agent に委譲して実行します。
-  自分でコードを書かず、terminal 経由で pi を呼び出してください。
-  pi の呼び出しが完了したら結果を確認し、kanban_complete または kanban_block で
-  タスクをクローズします。
-description_auto: false
-```
-
-**`~/.hermes/profiles/hermes_worker/config.yaml`**（主要箇所）:
-
-```yaml
-model:
-  provider: opencode
-  default: opencode/deepseek-v4-flash
-  base_url: https://opencode.ai/zen/v1
-
-agent:
-  max_turns: 50
-  tool_use_enforcement: auto
-
-terminal:
-  backend: local
-  cwd: /path/to/hermes-integrations
-  timeout: 600
-```
-
-> Worker 自身はタスク解釈と `terminal` + `kanban_*` の呼び出しのみ。`deepseek-v4-flash` で十分。コード品質は pi 側のモデルに依存。
-
-### pi-agent SKILL.md
-
-**作成先**: `~/.hermes/skills/devops/pi-agent/SKILL.md`
-
-```markdown
----
-name: pi-agent
-description: "Delegate coding to pi agent (read/bash/edit/write)."
-version: 1.0.0
-metadata:
-  hermes:
-    tags: [Coding-Agent, pi, Autonomous]
-    related_skills: [kanban-worker]
----
-
-# pi agent
-
-pi は read / bash / edit / write のツールを持つ AI コーディングエージェント。
-`pi -p "prompt"` でワンショット実行できる。
-
-## When to Use
-
-- 実装・コード生成・ファイル編集が必要なタスク
-- テストの作成・実行
-- git commit / gh pr create
-
-## 基本コマンド
+プロジェクトの雛形ディレクトリを生成する。
 
 ```bash
-pi -p "タスク内容" --provider opencode --model opencode/deepseek-v4-flash
-pi -p "タスク" --workdir "$HERMES_KANBAN_WORKSPACE"
+./scripts/create-project.sh my-app --issue https://github.com/owner/repo/issues/42
 ```
 
-## Worker の手順
+### `generate-spec.sh`
 
-1. `kanban_show()` でタスクの title / body を読む
-2. タスク内容から pi に渡すプロンプトを構築
-3. `terminal(command="pi -p '...'", workdir="$HERMES_KANBAN_WORKSPACE")` を実行
-4. 実行結果を確認。失敗したらモデルを変えてリトライ
-5. `kanban_complete(summary=..., metadata={"changed_files": [...]})` で完了
-
-## プロンプトテンプレート
+GitHub Issue の本文を OpenRouter API に投げ、`docs/spec.md` を生成する。
 
 ```bash
-pi -p "
-仕様: {task_body}
-
-以下を実行:
-1. 必要なファイルを作成・編集
-2. テストを書いて実行
-3. git add + git commit
-4. gh pr create --title '{task_title}' --body 'Closes #{issue_number}'
-" --provider opencode --model opencode/deepseek-v4-flash
+export OPENROUTER_API_KEY="sk-..."
+ISSUE_BODY="$(gh issue view 42 --json body -q .body)"
+ISSUE_BODY="$ISSUE_BODY" bash scripts/generate-spec.sh my-app 42
 ```
 
-## 注意
-
-- `clarify` は使わない（ヘッドレス実行）
-- 判断が必要な場合は `kanban_comment()` + `kanban_block()` でブロック
-```
-
----
-
-## Issue Poll（GCE cron `poll-issues.sh`）
-
-GitHub Issue を定期的にチェックし、未処理の `app-idea` Issue を Kanban に追加する。
-Project scaffold は既に Actions が済ませているので、`poll-issues.sh` は Kanban キューイングのみ担当。
-
-**`scripts/poll-issues.sh`**:
+モデルの変更:
 
 ```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-gh issue list --label app-idea --state open --json number,title,body \
-  | jq -c '.[]' | while read -r issue; do
-
-  NUMBER=$(echo "$issue" | jq -r '.number')
-  TITLE=$(echo "$issue" | jq -r '.title')
-  BODY=$(echo "$issue" | jq -r '.body')
-
-  # 既に Kanban にあればスキップ
-  if hermes kanban list --status todo,ready --json \
-    | jq -e ".[] | select(.title | contains(\"#$NUMBER\"))" > /dev/null 2>&1; then
-    continue
-  fi
-
-  PROJECT_NAME=$(echo "$TITLE" | sed 's/\[App\] //' | tr 'A-Z' 'a-z' | tr ' ' '-')
-
-  # project ディレクトリがなければ作成（念のため）
-  if [ ! -d "projects/$PROJECT_NAME" ]; then
-    ./scripts/create-project.sh "$PROJECT_NAME" \
-      --issue "https://github.com/$GITHUB_REPOSITORY/issues/$NUMBER"
-  fi
-
-  hermes kanban create \
-    "$PROJECT_NAME を実装 (#$NUMBER)" \
-    --body "$BODY" \
-    --assignee worker
-done
+export OPENROUTER_MODEL="google/gemini-2.5-pro"
 ```
 
-**cron**:
+### `dispatch-ready.sh`
 
-```cron
-*/5 * * * * cd /path/to/hermes-integrations && bash scripts/poll-issues.sh >> /var/log/poll-issues.log 2>&1
+Beads で ready work を取得し、pi agent にディスパッチする（GCE cron ターゲット）。
+
+```bash
+bash scripts/dispatch-ready.sh
 ```
+
+処理:
+1. `bd github pull` — GitHub Issues → Beads に同期
+2. `bd ready --claim --json` — unblocked work をアトミックに取得
+3. `pi -p "..." --workdir projects/<name>` — 実装
+4. `bd close` — 完了処理
 
 ---
 
@@ -343,10 +220,9 @@ done
 
 | 役割 | モデル | 理由 |
 |---|---|---|
-| **Hermes Worker** | `opencode/deepseek-v4-flash` ($0.14/$0.28) | タスク解釈 + ツール呼び出しのみ。安くて十分 |
-| **pi agent (実装)** | `opencode/deepseek-v4-flash` | コスパ重視。デイリー開発向け |
-| **pi agent (難しいタスク)** | `opencode/claude-sonnet-5` ($2/$10) | 複雑な実装・精度が必要な場合 |
-| **テスト・軽作業** | `opencode/deepseek-v4-flash-free` (無料) | 期間限定だがコストゼロ |
+| **pi agent (通常)** | `opencode/deepseek-v4-flash` | コスパ重視。デイリー開発向け |
+| **pi agent (難しいタスク)** | `opencode/claude-sonnet-5` | 複雑な実装・精度が必要な場合 |
+| **spec 生成** | `google/gemini-2.0-flash-001` (OpenRouter) | 安価・高速 |
 
 pi 呼び出し時に `--model` で切り替え:
 
@@ -357,17 +233,6 @@ pi -p "..." --provider opencode --model opencode/deepseek-v4-flash
 # 精度重視
 pi -p "..." --provider opencode --model opencode/claude-sonnet-5
 ```
-
----
-
-## 課題と対策
-
-### LM Studio の function calling 問題
-
-Qwen3.5-9B / Gemma-4-26B などローカルモデルは function calling が不安定で、
-`execute\n ls -la` のようにコマンドをテキストで書いて終わってしまう。
-
-**対策**: Hermes Kanban はタスク管理に専念させ、実際のコード生成は pi agent（→ OpenCode Zen）に委譲するハイブリッド構成。pi は独自の tool calling 機構を持ち、モデルに依存しない安定動作が可能。
 
 ---
 
