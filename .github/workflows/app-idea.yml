@@ -80,6 +80,6 @@ jobs:
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: `✅ プロジェクト \`${name}\` を scaffold + spec生成しました\n\`\`\`\nprojects/${name}/\n├── src/\n├── tests/\n├── docs/\n│   └── spec.md ← 実装スペック\n├── README.md\n└── .gitignore\n\`\`\`\nGCE 上の Hermes Kanban が検出次第、実装を開始します。`
+                body: `✅ プロジェクト \`${name}\` を scaffold + spec生成しました\n\`\`\`\nprojects/${name}/\n├── src/\n├── tests/\n├── docs/\n│   └── spec.md ← 実装スペック\n├── README.md\n└── .gitignore\n\`\`\`\nGCE cron が次の ready work を検出次第、実装を開始します。`
               });
             }
