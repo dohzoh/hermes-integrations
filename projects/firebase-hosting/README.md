@@ -8,9 +8,11 @@ Fetch all files from a Firebase Hosting site with Unicode/Japanese filename supp
 
 ```bash
 npm install
-export FIREBASE_TOKEN="your-token"  # from firebase login:ci
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
 npm run start -- <site_name>
 ```
+
+The service account needs the Firebase Hosting Admin and Firebase Storage Admin roles.
 
 ## Usage
 
@@ -41,9 +43,10 @@ npx firebase-hosting-fetch my-site -o ./downloaded -c 50
 ```
 firebase-hosting-fetch/
 ├── src/
-│   ├── cli.ts            # CLI entry point (commander)
-│   ├── fetch-files.ts    # Core logic: list, fetch, write
-│   └── types.ts          # Shared types
+│   ├── auth.ts             # Google service account auth
+│   ├── cli.ts              # CLI entry point (commander)
+│   ├── fetch-files.ts      # Core logic: list, fetch, write
+│   └── types.ts            # Shared types
 ├── tests/
 │   └── fetch-files.test.ts
 ├── docs/

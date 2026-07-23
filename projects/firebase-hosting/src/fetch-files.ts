@@ -1,16 +1,14 @@
 import type { FirebaseRelease, FirebaseFileList, CLIOptions } from './types.js';
 import { mkdir, writeFile } from 'fs/promises';
 import { dirname } from 'path';
+import { getAccessToken } from './auth.js';
 
 /**
  * Gets the latest version name for a Firebase Hosting site.
- * Requires FIREBASE_TOKEN environment variable to be set.
+ * Uses GOOGLE_APPLICATION_CREDENTIALS for authentication.
  */
 export async function getLatestVersion(site: string): Promise<string> {
-  const token = process.env.FIREBASE_TOKEN;
-  if (!token) {
-    throw new Error('FIREBASE_TOKEN environment variable is required');
-  }
+  const token = await getAccessToken();
 
   const url = `https://firebasehosting.googleapis.com/v1beta1/sites/${site}/releases?pageSize=1`;
   const response = await fetch(url, {
@@ -40,10 +38,10 @@ export async function getLatestVersion(site: string): Promise<string> {
  */
 export async function listFiles(
   versionName: string,
-  token: string,
   existing: string[] = [],
   pageToken?: string
 ): Promise<string[]> {
+  const token = await getAccessToken();
   const params = new URLSearchParams({ pageSize: '1000' });
   if (pageToken) params.set('pageToken', pageToken);
 
@@ -61,7 +59,7 @@ export async function listFiles(
   existing.push(...paths);
 
   if (data.nextPageToken) {
-    return listFiles(versionName, token, existing, data.nextPageToken);
+    return listFiles(versionName, existing, data.nextPageToken);
   }
 
   return existing;
@@ -70,19 +68,17 @@ export async function listFiles(
 /**
  * Fetches a single file from a Firebase Hosting site and writes it to disk.
  * Uses encodeURI() to safely handle Unicode/Japanese characters in paths.
+ * CDN access is public — no auth header needed.
  */
 export async function fetchFile(
   site: string,
-  token: string,
   filePath: string,
   outputDir: string
 ): Promise<void> {
   const encodedPath = encodeURI(filePath);
   const url = `https://${site}.firebaseapp.com${encodedPath}`;
 
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  const response = await fetch(url);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch ${filePath}: ${response.status} ${response.statusText}`);
@@ -101,7 +97,6 @@ export async function fetchFile(
  */
 export async function fetchFiles(
   site: string,
-  token: string,
   files: string[],
   outputDir: string,
   concurrency: number
@@ -116,7 +111,7 @@ export async function fetchFiles(
         const file = files[index++];
         active++;
 
-        fetchFile(site, token, file, outputDir)
+        fetchFile(site, file, outputDir)
           .then(() => {
             active--;
             completed++;

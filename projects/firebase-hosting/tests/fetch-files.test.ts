@@ -1,4 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+vi.mock('../src/auth.js', () => ({
+  getAccessToken: vi.fn().mockResolvedValue('fake-token')
+}));
+
 import { getLatestVersion, listFiles, fetchFile, fetchFiles } from '../src/fetch-files.js';
 
 describe('getLatestVersion', () => {
@@ -10,19 +15,14 @@ describe('getLatestVersion', () => {
 
   afterEach(() => {
     fetchMock?.mockRestore();
-    delete process.env.FIREBASE_TOKEN;
   });
 
   it('returns version name from latest release', async () => {
-    process.env.FIREBASE_TOKEN = 'test-token';
-
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => {
-        return {
-          releases: [{ version: { name: 'sites/my-site/versions/v123' } }]
-        }
-      }
+      json: async () => ({
+        releases: [{ version: { name: 'sites/my-site/versions/v123' } }]
+      })
     } as Response);
 
     const result = await getLatestVersion('my-site');
@@ -30,26 +30,18 @@ describe('getLatestVersion', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       'https://firebasehosting.googleapis.com/v1beta1/sites/my-site/releases?pageSize=1',
       expect.objectContaining({
-        headers: { Authorization: 'Bearer test-token' }
+        headers: { Authorization: 'Bearer fake-token' }
       })
     );
   });
 
   it('throws when no releases found', async () => {
-    process.env.FIREBASE_TOKEN = 'test-token';
-
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => {
-        return { releases: [] }
-      }
+      json: async () => ({ releases: [] })
     } as Response);
 
     await expect(getLatestVersion('my-site')).rejects.toThrow('No releases found');
-  });
-
-  it('throws when FIREBASE_TOKEN not set', async () => {
-    await expect(getLatestVersion('my-site')).rejects.toThrow('FIREBASE_TOKEN environment variable is required');
   });
 });
 
@@ -72,7 +64,7 @@ describe('listFiles', () => {
       })
     } as Response);
 
-    const result = await listFiles('sites/my-site/versions/v123', 'fake-token');
+    const result = await listFiles('sites/my-site/versions/v123');
     expect(result).toEqual(['/index.html', '/style.css']);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -92,7 +84,7 @@ describe('listFiles', () => {
       })
     } as Response);
 
-    const result = await listFiles('sites/my-site/versions/v123', 'fake-token');
+    const result = await listFiles('sites/my-site/versions/v123');
     expect(result).toEqual(['/page1.html', '/page2.html']);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -103,6 +95,8 @@ describe('fetchFile', () => {
 
   beforeEach(() => {
     fetchMock = vi.spyOn(globalThis, 'fetch');
+    vi.spyOn(require('fs/promises'), 'writeFile').mockResolvedValue(undefined);
+    vi.spyOn(require('fs/promises'), 'mkdir').mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -110,36 +104,28 @@ describe('fetchFile', () => {
   });
 
   it('encodes Japanese characters in URL', async () => {
-    vi.spyOn(require('fs/promises'), 'writeFile').mockResolvedValue(undefined);
-    vi.spyOn(require('fs/promises'), 'mkdir').mockResolvedValue(undefined);
-
     fetchMock.mockResolvedValue({
       ok: true,
       arrayBuffer: async () => new ArrayBuffer(8)
     } as Response);
 
-    await fetchFile('my-site', 'fake-token', '/サマリ.png', '/tmp');
+    await fetchFile('my-site', '/サマリ.png', '/tmp');
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('%E3%82%B5%E3%83%9E%E3%83%AA'),
-      expect.any(Object)
+      'https://my-site.firebaseapp.com/%E3%82%B5%E3%83%9E%E3%83%AA.png'
     );
   });
 
   it('preserves forward slashes in path', async () => {
-    vi.spyOn(require('fs/promises'), 'writeFile').mockResolvedValue(undefined);
-    vi.spyOn(require('fs/promises'), 'mkdir').mockResolvedValue(undefined);
-
     fetchMock.mockResolvedValue({
       ok: true,
       arrayBuffer: async () => new ArrayBuffer(8)
     } as Response);
 
-    await fetchFile('my-site', 'fake-token', '/images/test.png', '/tmp');
+    await fetchFile('my-site', '/images/test.png', '/tmp');
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/images/test.png'),
-      expect.any(Object)
+      'https://my-site.firebaseapp.com/images/test.png'
     );
   });
 
@@ -151,7 +137,7 @@ describe('fetchFile', () => {
       text: async () => 'Not Found'
     } as Response);
 
-    await expect(fetchFile('my-site', 'fake-token', '/missing.html', '/tmp'))
+    await expect(fetchFile('my-site', '/missing.html', '/tmp'))
       .rejects.toThrow('Failed to fetch /missing.html: 404 Not Found');
   });
 });
@@ -170,7 +156,7 @@ describe('fetchFiles', () => {
 
   afterEach(() => {
     fetchMock?.mockRestore();
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('respects concurrency limit', async () => {
@@ -189,7 +175,7 @@ describe('fetchFiles', () => {
     });
 
     const files = Array.from({ length: 10 }, (_, i) => `/file${i}.txt`);
-    await fetchFiles('my-site', 'fake-token', files, '/tmp', 3);
+    await fetchFiles('my-site', files, '/tmp', 3);
 
     expect(maxConcurrent).toBeLessThanOrEqual(3);
   });
@@ -198,7 +184,7 @@ describe('fetchFiles', () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation();
 
     const files = ['/file1.txt', '/file2.txt'];
-    await fetchFiles('my-site', 'fake-token', files, '/tmp', 2);
+    await fetchFiles('my-site', files, '/tmp', 2);
 
     expect(logSpy).toHaveBeenCalledTimes(2);
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Fetched /file1.txt'));
@@ -215,13 +201,9 @@ describe('end-to-end', () => {
 
   afterEach(() => {
     fetchMock?.mockRestore();
-    vi.restoreAllMocks();
   });
 
   it('fetches all files with correct paths', async () => {
-    process.env.FIREBASE_TOKEN = 'fake-token';
-
-    // Mock version lookup
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -229,7 +211,6 @@ describe('end-to-end', () => {
       })
     } as Response);
 
-    // Mock file listing
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -237,7 +218,6 @@ describe('end-to-end', () => {
       })
     } as Response);
 
-    // Mock file fetches
     fetchMock.mockResolvedValue({
       ok: true,
       arrayBuffer: async () => Buffer.from('<html>test</html>')
@@ -246,18 +226,16 @@ describe('end-to-end', () => {
     vi.spyOn(require('fs/promises'), 'writeFile').mockResolvedValue(undefined);
     vi.spyOn(require('fs/promises'), 'mkdir').mockResolvedValue(undefined);
 
-    // End-to-end: get version -> list files -> fetch files
     const versionName = await getLatestVersion('test');
     expect(versionName).toBe('sites/test/versions/v1');
 
-    const files = await listFiles(versionName, 'fake-token');
+    const files = await listFiles(versionName);
     expect(files).toEqual(['/index.html', '/日本語.html']);
 
-    await fetchFiles('test', 'fake-token', files, '/tmp/test', 2);
+    await fetchFiles('test', files, '/tmp/test', 2);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('%E6%97%A5%E6%9C%AC%E8%AA%9E.html'),
-      expect.any(Object)
+      expect.stringContaining('%E6%97%A5%E6%9C%AC%E8%AA%9E.html')
     );
   });
 });

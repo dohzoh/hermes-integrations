@@ -26,13 +26,13 @@ export function parseArgs(args: string[]): CLIOptions {
 async function main() {
   const opts = parseArgs(process.argv);
 
-  console.log(`Fetching files from ${opts.site}...`);
-
-  const token = process.env.FIREBASE_TOKEN;
-  if (!token) {
-    console.error('ERROR: FIREBASE_TOKEN environment variable is required');
+  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    console.error('ERROR: GOOGLE_APPLICATION_CREDENTIALS environment variable is required');
+    console.error('Set it to the path of your service account JSON key file.');
     process.exit(1);
   }
+
+  console.log(`Fetching files from ${opts.site}...`);
 
   const versionName = await getLatestVersion(opts.site);
   const versionId = versionName.split('/').pop()!;
@@ -41,10 +41,10 @@ async function main() {
   console.log(`Version: ${versionId}`);
   console.log(`Output: ${outputDir}`);
 
-  const files = await listFiles(versionName, token);
+  const files = await listFiles(versionName);
   console.log(`Found ${files.length} files`);
 
-  await fetchFiles(opts.site, token, files, outputDir, opts.concurrency);
+  await fetchFiles(opts.site, files, outputDir, opts.concurrency);
   console.log('Complete!');
 }
 
