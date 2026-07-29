@@ -10,7 +10,7 @@ GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-dohzoh/hermes-integrations}"
 
 bd github pull 2>/dev/null || true
 
-READY=$(bd ready --type task --limit 1 --claim --json 2>/dev/null | grep -E '^(\[|\{)' || echo "[]")
+READY=$(BD_JSON_ENVELOPE=1 bd ready --type task --limit 1 --claim --json 2>/dev/null || echo "[]")
 
 BEAD_ID=$(echo "$READY" | jq -r '.[0].id // empty')
 if [ -z "$BEAD_ID" ]; then
