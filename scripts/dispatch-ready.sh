@@ -12,13 +12,13 @@ bd github pull 2>/dev/null || true
 
 READY=$(BD_JSON_ENVELOPE=1 bd ready --type task --limit 1 --claim --json 2>/dev/null || echo "[]")
 
-BEAD_ID=$(echo "$READY" | jq -r '.[0].id // empty')
+BEAD_ID=$(echo "$READY" | jq -r '.data[0].id // empty')
 if [ -z "$BEAD_ID" ]; then
   exit 0
 fi
 
-TITLE=$(echo "$READY" | jq -r '.[0].title // empty')
-EXTERNAL_REF=$(echo "$READY" | jq -r '.[0].external_ref // empty')
+TITLE=$(echo "$READY" | jq -r '.data[0].title // empty')
+EXTERNAL_REF=$(echo "$READY" | jq -r '.data[0].external_ref // empty')
 
 ISSUE_NUMBER=""
 if [[ "$EXTERNAL_REF" =~ /issues/([0-9]+)$ ]]; then
