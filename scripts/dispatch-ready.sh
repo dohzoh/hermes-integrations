@@ -53,10 +53,9 @@ fi
 
 bd update "$BEAD_ID" --status in_progress --json 2>/dev/null || true
 
-pi -p "
-Read the spec at projects/$PROJECT_NAME/docs/spec.md and implement it.
-Work inside projects/$PROJECT_NAME/.
+cd "$ROOT_DIR/projects/$PROJECT_NAME" && pi -p "
+Read the spec at docs/spec.md and implement it.
 Write tests, commit with message 'implement $PROJECT_NAME (#$ISSUE_NUMBER)', and create a PR.
-" --workdir "$ROOT_DIR/projects/$PROJECT_NAME"
+"
 
 bd close "$BEAD_ID" --reason "Implemented via pi agent" --json 2>/dev/null || true
