@@ -12,7 +12,7 @@ bd github pull 2>/dev/null || true
 
 READY=$(BD_JSON_ENVELOPE=1 bd ready --type task --limit 1 --claim --json 2>/dev/null || echo "[]")
 
-BEAD_ID=$(echo "$READY" | jq -r '.data[0].id // empty')
+BEAD_ID=$(echo "$READY" | jq -r 'if type == "array" then empty else .data[0].id // empty end')
 if [ -z "$BEAD_ID" ]; then
   exit 0
 fi
