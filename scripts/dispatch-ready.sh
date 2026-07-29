@@ -8,7 +8,7 @@ git pull --rebase
 
 GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-dohzoh/hermes-integrations}"
 
-bd github pull --quiet 2>/dev/null || true
+bd github pull 2>/dev/null || true
 
 READY=$(bd ready --type task --limit 1 --claim --json 2>/dev/null || echo "[]")
 
