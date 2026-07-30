@@ -20,13 +20,18 @@ jobs:
       - name: Extract project name
         id: extract
         run: |
+          ISSUE_NUM="${{ github.event.issue.number }}"
           TITLE="${{ github.event.issue.title }}"
           NAME=$(echo "$TITLE" \
             | sed 's/\[App\] *//' \
             | tr '[:upper:]' '[:lower:]' \
             | tr ' ' '-' \
             | tr -cd 'a-z0-9_-')
+          if [ -z "$NAME" ]; then
+            NAME="issue-$ISSUE_NUM"
+          fi
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "number=$ISSUE_NUM" >> "$GITHUB_OUTPUT"
 
       - name: Check if project already exists
         id: check
