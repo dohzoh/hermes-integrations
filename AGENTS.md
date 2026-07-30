@@ -89,6 +89,13 @@ ISSUE_BODY="$ISSUE_BODY" bash scripts/generate-spec.sh my-project 42
 bash scripts/dispatch-ready.sh
 ```
 
+### Sync and git pull (manual)
+
+```bash
+bash scripts/bd-sync.sh        # Sync GitHub Issues → Beads
+bash scripts/git-sync.sh       # git pull --rebase
+```
+
 ### Beads commands
 
 ```bash
@@ -125,16 +132,17 @@ Each project is independent with its own language, framework, and tooling. There
 ### Workflows & automation
 
 - Issue → scaffold pipeline: GitHub Actions, triggered on `issues: [opened, labeled]` when label `app-idea` present.
-- Ready-work → implement pipeline: GCE cron runs `dispatch-ready.sh`, which syncs GitHub Issues via `bd github pull`, finds ready work via `bd ready --claim`, and dispatches to pi agent.
+- Ready-work → implement pipeline: GCE cron runs `dispatch-ready.sh`, which finds ready work via `bd ready --claim`, and dispatches to pi agent. Beads sync is handled by `bd-sync.sh`, and git updates by `git-sync.sh`, each on separate cron schedules.
 - Commit messages from automation: `scaffold <name> from #<N>`, `implement <name> (#<N>)`.
 
 ### AI agent patterns (Beads + pi)
 
 - `dispatch-ready.sh` claims a Beads issue atomically via `bd ready --claim`, then dispatches to `pi -p "..." --workdir projects/<name>`.
 - `pi` agent reads `spec.md`, implements the feature, writes tests, commits, creates PR.
-- On success, `dispatch-ready.sh` runs `bd close` with the issue ID.
-- On failure, the issue stays `in_progress` (not closed); next cron run will skip it since it's already claimed.
+- `dispatch-ready.sh` uses a `dispatch.json` file in each project directory to track in-progress dispatches. On failure or crash, the bead is released back to `open` for retry. Orphan/stale detection runs at the start of each cron invocation.
 - `pi` agent uses `--provider opencode --model opencode/deepseek-v4-flash`.
+- On success, `dispatch-ready.sh` runs `bd close` with the issue ID.
+- On failure, the bead is released back to `open` status for retry on the next cron run.
 
 ### Python project pattern (reference: `github-trend-twitterx`)
 
@@ -152,7 +160,9 @@ Each project is independent with its own language, framework, and tooling. There
 |------|---------|
 | `scripts/create-project.sh` | Project scaffolding script |
 | `scripts/generate-spec.sh` | Issue → spec generation via OpenRouter API |
-| `scripts/dispatch-ready.sh` | Beads sync + ready-work dispatch (cron target) |
+| `scripts/git-sync.sh` | Git pull --rebase only (separate cron) |
+| `scripts/bd-sync.sh` | Beads sync (bd github sync --pull-only) only |
+| `scripts/dispatch-ready.sh` | Ready-work claim + dispatch to pi agent (cron target) |
 | `.github/workflows/app-idea.yml` | Actions workflow: Issue → scaffold + spec |
 | `.github/ISSUE_TEMPLATE/app-idea.md` | Issue template for new project ideas |
 
