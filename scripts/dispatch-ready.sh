@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# brew-installed tools (bd, gh, jq, ...) — cron PATH doesn't include linuxbrew
+if [ -x /home/linuxbrew/.linuxbrew/bin/brew ] && ! command -v bd >/dev/null 2>&1; then
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
+
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
