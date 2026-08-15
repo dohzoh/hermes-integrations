@@ -5,6 +5,7 @@ set -euo pipefail
 if [ -x /home/linuxbrew/.linuxbrew/bin/brew ] && ! command -v bd >/dev/null 2>&1; then
   eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 fi
+export PATH="/home/dozo/.bun/bin:$PATH"
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
