@@ -79,4 +79,4 @@ bd.db
 # Added by bd (missing required patterns)
 *.gate.lock*
 
-./interactions.jsonl
+interactions.jsonl
