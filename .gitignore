@@ -150,3 +150,6 @@ vite.config.ts.timestamp-*
 
 # 
 .understand-anything/
+
+# Beads / Dolt files (added by bd init)
+*.gate.lock*
