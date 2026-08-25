@@ -26,7 +26,7 @@ log() {
 cleanup() {
   log "cleanup called; releasing bead $BEAD_ID"
   if [ -n "$BEAD_ID" ]; then
-    bd update "$BEAD_ID" --release --reason "dispatch exit" >> "$LOG_FILE" 2>&1 || true
+    bd update "$BEAD_ID" --status ready >> "$LOG_FILE" 2>&1 || true
   fi
 }
 
