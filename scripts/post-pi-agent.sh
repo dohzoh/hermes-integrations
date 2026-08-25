@@ -17,6 +17,11 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"          # hermes‑integrations root
 PROJECT="${ROOT}/projects/english-training-"
 SPEC="${PROJECT}/docs/spec.md"
 
+# mise-installed tools (node, npm, ...) — cron PATH doesn't include mise
+if [ -x /home/dozo/.local/bin/mise ] && ! command -v bd >/dev/null 2>&1; then
+  eval "$(/home/dozo/.local/bin/mise activate bash)"
+fi
+
 # 1️⃣ Basic sanity checks
 if [ ! -d "$PROJECT" ]; then
   echo "❌ Project directory $PROJECT not found"
