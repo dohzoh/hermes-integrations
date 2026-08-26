@@ -148,8 +148,10 @@ vite.config.ts.timestamp-*
 .beads-credential-key
 .beads/proxieddb/
 
-# 
+#
 .understand-anything/
 
 # Beads / Dolt files (added by bd init)
 *.gate.lock*
+
+.dispatch.json
