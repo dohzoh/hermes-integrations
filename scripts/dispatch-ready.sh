@@ -5,6 +5,10 @@ set -euo pipefail
 if [ -x /home/linuxbrew/.linuxbrew/bin/brew ] && ! command -v bd >/dev/null 2>&1; then
   eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 fi
+# mise-installed tools (node, npm, ...) — cron PATH doesn't include mise
+if [ -x /home/dozo/.local/bin/mise ] && ! command -v bd >/dev/null 2>&1; then
+  eval "$(/home/dozo/.local/bin/mise activate bash)"
+fi
 export PATH="/home/dozo/.bun/bin:$PATH"
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -26,7 +30,7 @@ log() {
 cleanup() {
   log "cleanup called; releasing bead $BEAD_ID"
   if [ -n "$BEAD_ID" ]; then
-    bd update "$BEAD_ID" --status ready >> "$LOG_FILE" 2>&1 || true
+    bd update "$BEAD_ID" --status open >> "$LOG_FILE" 2>&1 || true
   fi
 }
 
