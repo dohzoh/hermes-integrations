@@ -57,7 +57,7 @@ IN_PROGRESS_IDS=$(echo "$IN_PROGRESS" | jq -r '
 
 if [ -n "$IN_PROGRESS_IDS" ]; then
   log "stale dispatch found, releasing"
-  bd update "$IN_PROGRESS_IDS" --release --reason "orphan dispatch" >> "$LOG_FILE" 2>&1 || true
+  bd update --status open --reason "orphan dispatch" >> "$LOG_FILE" 2>&1 || true
 fi
 
 # --- Step 2: Claim one ready task ---
@@ -114,14 +114,14 @@ log "parsed: project=$PROJECT_NAME, issue=$ISSUE_NUMBER"
 # --- Step 4: Validate project dir + spec ---
 if [ ! -d "projects/$PROJECT_NAME" ]; then
   log "project directory projects/$PROJECT_NAME does not exist"
-  bd update "$BEAD_ID" --release --reason "project dir missing" >> "$LOG_FILE" 2>&1 || true
+  bd update "$BEAD_ID" --status open --reason "project dir missing" >> "$LOG_FILE" 2>&1 || true
   exit 1
 fi
 
 SPEC_FILE="projects/$PROJECT_NAME/docs/spec.md"
 if [ ! -f "$SPEC_FILE" ]; then
   log "spec.md not found in projects/$PROJECT_NAME/docs/spec.md"
-  bd update "$BEAD_ID" --release --reason "spec missing" >> "$LOG_FILE" 2>&1 || true
+  bd update "$BEAD_ID" --status open --reason "spec missing" >> "$LOG_FILE" 2>&1 || true
   exit 1
 fi
 
