@@ -6,10 +6,23 @@ if [ -x /home/linuxbrew/.linuxbrew/bin/brew ] && ! command -v bd >/dev/null 2>&1
   eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 fi
 # mise-installed tools (node, npm, ...) — cron PATH doesn't include mise
-if [ -x /home/dozo/.local/bin/mise ] && ! command -v bd >/dev/null 2>&1; then
+if [ -x /home/dozo/.local/bin/mise ] && ! command -v node >/dev/null 2>&1; then
   eval "$(/home/dozo/.local/bin/mise activate bash)"
 fi
 export PATH="/home/dozo/.bun/bin:$PATH"
+
+# pi shebang is #!/usr/bin/env node — guarantee node is on PATH even under cron
+if ! command -v node >/dev/null 2>&1; then
+  for node_dir in \
+    "$HOME/.local/share/mise/installs/node"/*/bin \
+    "$HOME/.nvm/versions/node"/*/bin \
+    /usr/local/bin /usr/bin; do
+    if [ -x "$node_dir/node" ]; then
+      export PATH="$node_dir:$PATH"
+      break
+    fi
+  done
+fi
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
