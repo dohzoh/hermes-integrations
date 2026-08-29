@@ -1,4 +1,4 @@
-import type { Question, SubmitResult, SessionResults } from './types';
+import type { Question, SubmitResult, SessionResults } from "./types";
 
 export class EnglishTrainingApp {
   sessionQuestions: Question[] = [];

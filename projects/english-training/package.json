@@ -10,8 +10,8 @@
     "preview": "vite preview",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
-    "fmt": "oxfmt",
-    "fmt:check": "oxfmt --check",
+    "fmt:fix": "oxfmt",
+    "fmt": "oxfmt --check",
     "test": "vitest run",
     "test:watch": "vitest"
   },
