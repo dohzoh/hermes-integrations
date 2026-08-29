@@ -1,4 +1,4 @@
-import type { Question, GradeResult } from './types';
+import type { Question, GradeResult } from "./types";
 
 /**
  * Grade a user answer against a question
@@ -23,25 +23,28 @@ export function gradeAnswer(question: Question, userAnswer: string): GradeResult
 
   // Determine grade
   let grade: Grade;
-  if (score >= 2) grade = 'Excellent';
-  else if (score >= 1) grade = 'Good';
-  else grade = 'Needs Improvement';
+  if (score >= 2) grade = "Excellent";
+  else if (score >= 1) grade = "Good";
+  else grade = "Needs Improvement";
 
   // Generate feedback inline
   const feedback: string[] = [];
   if (score >= 2) {
-    feedback.push('Great job! Your answer is correct and well-formed.');
+    feedback.push("Great job! Your answer is correct and well-formed.");
   } else if (score >= 1) {
-    feedback.push('Good effort! Your answer is almost correct.');
+    feedback.push("Good effort! Your answer is almost correct.");
   } else {
-    feedback.push('Try again. Think about the question and give a clearer answer.');
+    feedback.push("Try again. Think about the question and give a clearer answer.");
   }
 
   return {
     score,
     grade,
-    feedback: feedback.join(' '),
-    hint: keywords && keywords.length > 0 ? `Hint: Try using the word "${keywords[0]}" in your answer.` : 'Hint: Take your time and think about the question.',
+    feedback: feedback.join(" "),
+    hint:
+      keywords && keywords.length > 0
+        ? `Hint: Try using the word "${keywords[0]}" in your answer.`
+        : "Hint: Take your time and think about the question.",
     example: expectedAnswer,
   };
 }

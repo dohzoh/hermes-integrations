@@ -1,4 +1,5 @@
 # Quizlet — Style Reference
+
 > color-coded classroom on white — a quiet study desk where four pastel flashcards are the only splash of color against cool gray walls and a single indigo highlighter mark.
 
 **Theme:** light
@@ -7,28 +8,30 @@ Quizlet presents an educational workspace on a soft blue-white canvas: a calm, d
 
 ## Tokens — Colors
 
-| Name | Value | Token | Role |
-|------|-------|-------|------|
-| Iris Bolt | `#4255ff` | `--color-iris-bolt` | Violet supporting accent for decorative details and low-frequency emphasis. Do not promote it to the primary CTA color |
+| Name         | Value     | Token                  | Role                                                                                                                                  |
+| ------------ | --------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Iris Bolt    | `#4255ff` | `--color-iris-bolt`    | Violet supporting accent for decorative details and low-frequency emphasis. Do not promote it to the primary CTA color                |
 | Ink Charcoal | `#282e3e` | `--color-ink-charcoal` | Primary text, headings, body copy, footer headings, icon strokes — near-black navy that reads warmer than pure #000 on light surfaces |
-| Deep Indigo | `#2e3856` | `--color-deep-indigo` | Secondary body text, supporting copy where Ink Charcoal would feel too heavy |
-| Slate Veil | `#586380` | `--color-slate-veil` | Muted helper text, secondary metadata, tertiary nav items, subtle icon fills |
-| Fog Mist | `#939bb4` | `--color-fog-mist` | Placeholder text, disabled states, hairline icon strokes, low-emphasis borders |
-| Pure Black | `#000000` | `--color-pure-black` | App store download badges, maximum-contrast text on light tinted panels, occasional icon detail |
-| Chalk Canvas | `#f6f7fb` | `--color-chalk-canvas` | Page background, page-level canvas behind cards and content sections |
-| Paper White | `#ffffff` | `--color-paper-white` | Card surfaces, modal backgrounds, input fields, raised panel fills |
-| Lilac Wash | `#edefff` | `--color-lilac-wash` | Tinted section backgrounds, subtle highlight zones, promotional banner fills |
-| Mist Border | `#d9dde8` | `--color-mist-border` | Hairline dividers, card edges, input borders, separator lines |
+| Deep Indigo  | `#2e3856` | `--color-deep-indigo`  | Secondary body text, supporting copy where Ink Charcoal would feel too heavy                                                          |
+| Slate Veil   | `#586380` | `--color-slate-veil`   | Muted helper text, secondary metadata, tertiary nav items, subtle icon fills                                                          |
+| Fog Mist     | `#939bb4` | `--color-fog-mist`     | Placeholder text, disabled states, hairline icon strokes, low-emphasis borders                                                        |
+| Pure Black   | `#000000` | `--color-pure-black`   | App store download badges, maximum-contrast text on light tinted panels, occasional icon detail                                       |
+| Chalk Canvas | `#f6f7fb` | `--color-chalk-canvas` | Page background, page-level canvas behind cards and content sections                                                                  |
+| Paper White  | `#ffffff` | `--color-paper-white`  | Card surfaces, modal backgrounds, input fields, raised panel fills                                                                    |
+| Lilac Wash   | `#edefff` | `--color-lilac-wash`   | Tinted section backgrounds, subtle highlight zones, promotional banner fills                                                          |
+| Mist Border  | `#d9dde8` | `--color-mist-border`  | Hairline dividers, card edges, input borders, separator lines                                                                         |
 
 ## Tokens — Typography
 
 ### hurme_no2-webfont — hurme_no2-webfont — detected in extracted data but not described by AI · `--font-hurmeno2-webfont`
+
 - **Weights:** 400, 600, 700
 - **Sizes:** 12px, 14px, 16px, 20px, 21px, 24px, 32px, 44px
 - **Line height:** 1.25, 1.27, 1.33, 1.4, 1.43, 1.5, 1.63
 - **Role:** hurme_no2-webfont — detected in extracted data but not described by AI
 
 ### Hurme Geometric Sans — Single-family type system for all UI text. Weight 400 dominates body, nav, and most headings; 600 reserved for emphasis and button labels; 700 used sparingly for card titles. Hurme's geometric construction and open apertures give an approachable, textbook feel rather than corporate austerity. · `--font-hurme-geometric-sans`
+
 - **Substitute:** Inter, DM Sans, or Nunito Sans
 - **Weights:** 400, 600, 700
 - **Sizes:** 12, 14, 16, 20, 21, 24, 32, 44
@@ -37,15 +40,15 @@ Quizlet presents an educational workspace on a soft blue-white canvas: a calm, d
 
 ### Type Scale
 
-| Role | Size | Line Height | Letter Spacing | Token |
-|------|------|-------------|----------------|-------|
-| caption | 12px | 18 | — | `--text-caption` |
-| body-sm | 14px | 20 | — | `--text-body-sm` |
-| body | 16px | 24 | — | `--text-body` |
-| subheading | 20px | 28 | — | `--text-subheading` |
-| heading-sm | 24px | 32 | — | `--text-heading-sm` |
-| heading | 32px | 41 | — | `--text-heading` |
-| display | 44px | 55 | — | `--text-display` |
+| Role       | Size | Line Height | Letter Spacing | Token               |
+| ---------- | ---- | ----------- | -------------- | ------------------- |
+| caption    | 12px | 18          | —              | `--text-caption`    |
+| body-sm    | 14px | 20          | —              | `--text-body-sm`    |
+| body       | 16px | 24          | —              | `--text-body`       |
+| subheading | 20px | 28          | —              | `--text-subheading` |
+| heading-sm | 24px | 32          | —              | `--text-heading-sm` |
+| heading    | 32px | 41          | —              | `--text-heading`    |
+| display    | 44px | 55          | —              | `--text-display`    |
 
 ## Tokens — Spacing & Shapes
 
@@ -55,33 +58,33 @@ Quizlet presents an educational workspace on a soft blue-white canvas: a calm, d
 
 ### Spacing Scale
 
-| Name | Value | Token |
-|------|-------|-------|
-| 8 | 8px | `--spacing-8` |
-| 16 | 16px | `--spacing-16` |
-| 24 | 24px | `--spacing-24` |
-| 32 | 32px | `--spacing-32` |
-| 40 | 40px | `--spacing-40` |
-| 48 | 48px | `--spacing-48` |
-| 64 | 64px | `--spacing-64` |
+| Name | Value | Token          |
+| ---- | ----- | -------------- |
+| 8    | 8px   | `--spacing-8`  |
+| 16   | 16px  | `--spacing-16` |
+| 24   | 24px  | `--spacing-24` |
+| 32   | 32px  | `--spacing-32` |
+| 40   | 40px  | `--spacing-40` |
+| 48   | 48px  | `--spacing-48` |
+| 64   | 64px  | `--spacing-64` |
 
 ### Border Radius
 
-| Element | Value |
-|---------|-------|
-| cards | 8px |
-| pills | 200px |
-| inputs | 4px |
-| buttons | 4px |
-| featureCards | 24px |
+| Element      | Value |
+| ------------ | ----- |
+| cards        | 8px   |
+| pills        | 200px |
+| inputs       | 4px   |
+| buttons      | 4px   |
+| featureCards | 24px  |
 
 ### Shadows
 
-| Name | Value | Token |
-|------|-------|-------|
-| md | `rgba(40, 46, 62, 0.1) 0px 4px 16px 0px` | `--shadow-md` |
+| Name   | Value                                      | Token             |
+| ------ | ------------------------------------------ | ----------------- |
+| md     | `rgba(40, 46, 62, 0.1) 0px 4px 16px 0px`   | `--shadow-md`     |
 | subtle | `rgba(0, 0, 0, 0.3) 0px 0px 1px 0px inset` | `--shadow-subtle` |
-| sm | `rgba(40, 46, 62, 0.1) 0px 2px 4px 0px` | `--shadow-sm` |
+| sm     | `rgba(40, 46, 62, 0.1) 0px 2px 4px 0px`    | `--shadow-sm`     |
 
 ### Layout
 
@@ -93,61 +96,73 @@ Quizlet presents an educational workspace on a soft blue-white canvas: a calm, d
 ## Components
 
 ### Filled Pill Button
+
 **Role:** Primary interactive element (Sign up for free, Log in, Get the app)
 
 Background #4255ff, text #ffffff, font-weight 600, size 14-16px, padding 10px 20px, border-radius 200px, no border. Subtle shadow rgba(40,46,62,0.1) 0px 2px 4px 0px. Full pill shape distinguishes these from the squarer 4px utility buttons elsewhere.
 
 ### Outlined/Store Badge
+
 **Role:** App download buttons (App Store, Google Play)
 
 Background #000000, text #ffffff, border-radius 4px, padding 8px 16px. Black-on-white inversion to stand out as a distinct, external-store credential.
 
 ### Ghost Text Link
+
 **Role:** Inline secondary actions (I'm a teacher, Try it out)
 
 No background, no border, text in #4255ff at 16px weight 400, underline on hover only. Sits below or beside a filled button as a low-priority alternative.
 
 ### Ghost Outlined Button
+
 **Role:** Secondary call-to-action on promotional sections
 
 Background transparent, border 1px #4255ff, text #4255ff, border-radius 200px, padding 10px 24px, font-weight 600.
 
 ### Feature Category Card
+
 **Role:** Hero product showcase cards (Learn, Study Guides, Flashcards, Practice Tests)
 
 Large 24px border-radius, solid pastel fill (cyan/magenta/violet/peach), white inner content panel with 8px radius inset. Card title in weight 700 20-24px, body content in weight 400 14-16px. Used in horizontal carousel with left/right navigation arrows.
 
 ### Study Set Card
+
 **Role:** Content discovery cards in grid (Leccion II Problemas, Greek Gods, etc.)
 
 Background #ffffff, border 1px #d9dde8, border-radius 8px, padding 16px. Card title in weight 600 16px #282e3, term count badge in weight 400 12px #586380, creator avatar with circular crop and username in weight 400 12px.
 
 ### Top Navigation Bar
+
 **Role:** Persistent site header
 
 Background #ffffff, full-width with inner max-width 1200px, height ~56px, subtle shadow rgba(40,46,62,0.1) 0px 4px 16px 0px. Logo left, dropdown menus (Study tools, Subjects) with 4px radius, search bar centered, Create button (ghost) and Log in pill right.
 
 ### Search Bar
+
 **Role:** Central navigation input in header
 
 Background #f6f7fb, border-radius 200px, padding 8px 16px, placeholder text #939bb4 at 14px. Search icon left, no visible border. Expands as the visual anchor of the nav row.
 
 ### Footer Link Column
+
 **Role:** Multi-column site footer
 
 Five columns (About us, For students, For teachers, Resources, Language) on background #f6f7fb. Column headings in weight 600 14px #282e3, links in weight 400 14px #586380, 8px vertical gap between links, 48px column padding-top.
 
 ### Promotional Section Panel
+
 **Role:** Alternating lilac-background feature sections (Study Guides preview)
 
 Full-width section with background #edefff, inner max-width 1200px, two-column layout (image left, text right), headline in weight 700 32px #282e3, body in weight 400 16px #586380, filled pill button below copy.
 
 ### Carousel Navigation Arrow
+
 **Role:** Left/right controls on horizontal card carousels
 
 Circular button 40px diameter, background #ffffff, border 1px #d9dde8, center-aligned chevron icon in #282e3e. Floats at vertical center of card row.
 
 ### Term Count Badge
+
 **Role:** Small metadata pill on study set cards
 
 Background transparent or #f6f7fb, text #586380, font-size 12px weight 400, no border, sits between title and creator row.
@@ -155,6 +170,7 @@ Background transparent or #f6f7fb, text #586380, font-size 12px weight 400, no b
 ## Do's and Don'ts
 
 ### Do
+
 - Use #4255ff exclusively for filled interactive elements and links — it is the only saturated color in the system
 - Apply 200px border-radius to all primary filled buttons to create the signature pill shape
 - Set body text to #282e3 at weight 400 — avoid defaulting to weight 600 or 700 for paragraph copy
@@ -164,6 +180,7 @@ Background transparent or #f6f7fb, text #586380, font-size 12px weight 400, no b
 - Apply the single shadow token rgba(40,46,62,0.1) 0px 4px 16px 0px to nav bars and elevated cards — never stack multiple shadows
 
 ### Don't
+
 - Do not introduce additional saturated colors beyond #4255ff — the palette is deliberately near-monochrome with one accent
 - Do not use 4px or 8px radius on primary filled buttons — the pill (200px) is a signature
 - Do not set headings to weight 700 by default — weight 600 is the maximum for most titles, weight 700 reserved for feature card labels
@@ -174,12 +191,12 @@ Background transparent or #f6f7fb, text #586380, font-size 12px weight 400, no b
 
 ## Surfaces
 
-| Level | Name | Value | Purpose |
-|-------|------|-------|---------|
-| 0 | Page Canvas | `#f6f7fb` | Full page background, base layer behind all content |
-| 1 | Card Surface | `#ffffff` | Study set cards, nav bar, raised content panels |
-| 2 | Tinted Highlight | `#edefff` | Promotional sections, subtle background washes, feature zones |
-| 3 | Feature Card Pastels | `#dbdfff` | Colored feature cards (cyan/pink/violet/peach tints) — decorative category backgrounds |
+| Level | Name                 | Value     | Purpose                                                                                |
+| ----- | -------------------- | --------- | -------------------------------------------------------------------------------------- |
+| 0     | Page Canvas          | `#f6f7fb` | Full page background, base layer behind all content                                    |
+| 1     | Card Surface         | `#ffffff` | Study set cards, nav bar, raised content panels                                        |
+| 2     | Tinted Highlight     | `#edefff` | Promotional sections, subtle background washes, feature zones                          |
+| 3     | Feature Card Pastels | `#dbdfff` | Colored feature cards (cyan/pink/violet/peach tints) — decorative category backgrounds |
 
 ## Elevation
 
@@ -198,6 +215,7 @@ Centered max-width 1200px content rail on a full-bleed #f6f7fb canvas. The hero 
 ## Agent Prompt Guide
 
 **Quick Color Reference**
+
 - text: #282e3e (headings/body), #586380 (muted), #939bb4 (placeholder)
 - background: #f6f7fb (page canvas), #ffffff (cards/surfaces), #edefff (tinted sections)
 - border: #d9dde8 (hairlines)
@@ -205,6 +223,7 @@ Centered max-width 1200px content rail on a full-bleed #f6f7fb canvas. The hero 
 - primary action: no distinct CTA color
 
 **3-5 Example Component Prompts**
+
 1. Build a filled pill button: background #4255ff, text #ffffff, font-family Hurme Geometric Sans (substitute: Inter) weight 600 size 16px, padding 10px 24px, border-radius 200px, subtle shadow rgba(40,46,62,0.1) 0px 2px 4px 0px.
 2. Build a study set card: background #ffffff, border 1px solid #d9dde8, border-radius 8px, padding 16px. Title at 16px weight 600 color #282e3e. Metadata text at 12px weight 400 color #586380. Gap 8px between title and metadata.
 3. Build a feature category card: solid pastel fill background (use #dbdfff or equivalent category tint), border-radius 24px, internal white content panel at 8px radius. Card label at 20px weight 700 color #282e3e.
@@ -242,8 +261,12 @@ The palette is intentionally near-monochrome. #4255ff is the ONLY saturated chro
   --color-mist-border: #d9dde8;
 
   /* Typography — Font Families */
-  --font-hurmeno2-webfont: 'hurme_no2-webfont', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-hurme-geometric-sans: 'Hurme Geometric Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-hurmeno2-webfont:
+    "hurme_no2-webfont", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+  --font-hurme-geometric-sans:
+    "Hurme Geometric Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 
   /* Typography — Scale */
   --text-caption: 12px;
@@ -325,8 +348,12 @@ The palette is intentionally near-monochrome. #4255ff is the ONLY saturated chro
   --color-mist-border: #d9dde8;
 
   /* Typography */
-  --font-hurmeno2-webfont: 'hurme_no2-webfont', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-hurme-geometric-sans: 'Hurme Geometric Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-hurmeno2-webfont:
+    "hurme_no2-webfont", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+  --font-hurme-geometric-sans:
+    "Hurme Geometric Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 
   /* Typography — Scale */
   --text-caption: 12px;

@@ -8,7 +8,7 @@ export interface Question {
   keywords: string[];
 }
 
-export type Grade = 'Excellent' | 'Good' | 'Needs Improvement';
+export type Grade = "Excellent" | "Good" | "Needs Improvement";
 
 export interface GradeResult {
   score: number;

@@ -2,11 +2,16 @@
   "name": "english-training",
   "version": "1.0.0",
   "description": "English training app - Instant English Composition (瞬間英作文)",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -22,6 +27,5 @@
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
     "vitest": "^4.1.11"
-  },
-  "license": "MIT"
+  }
 }

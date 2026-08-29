@@ -9,7 +9,7 @@ class Speaker {
     this.synthesis = null;
     this.isInitialized = false;
   }
-  
+
   /**
    * Initialize the speech synthesis engine
    */
@@ -18,15 +18,15 @@ class Speaker {
       // Create the speech synthesis object
       this.synthesis = new (window.SpeechSynthesis || window.webkitSpeechSynthesis)();
       this.isInitialized = true;
-      console.log('Speaker initialized successfully.');
+      console.log("Speaker initialized successfully.");
       return true;
     } catch (error) {
-      console.error('Failed to initialize speaker:', error.message);
+      console.error("Failed to initialize speaker:", error.message);
       this.isInitialized = false;
       return false;
     }
   }
-  
+
   /**
    * Speak a given text
    * @param {string} text - The text to speak
@@ -36,7 +36,7 @@ class Speaker {
     if (!this.isInitialized) {
       await this.initialize();
     }
-    
+
     try {
       // Set the voice (optional - uses default)
       // This can be customized based on locale
@@ -44,17 +44,17 @@ class Speaker {
       if (voice.length > 0) {
         this.synthesis.setVoice(voice[0]); // Use first available voice
       }
-      
+
       // Speak the text
       await this.synthesis.speak(text);
       console.log(`Speaked: "${text}"`);
       return true;
     } catch (error) {
-      console.error('Speaking failed:', error.message);
+      console.error("Speaking failed:", error.message);
       return false;
     }
   }
-  
+
   /**
    * Check if the speaker is ready
    * @returns {boolean}
@@ -62,7 +62,7 @@ class Speaker {
   isReady() {
     return this.isInitialized;
   }
-  
+
   /**
    * Stop speaking
    */
