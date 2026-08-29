@@ -1,83 +1,118 @@
-<script setup lang="svelte">
-import { EnglishTrainingApp } from './main.js';
-import { speaker } from './speaker.js';
+<script lang="ts">
+  import { EnglishTrainingApp } from './main';
+  import { speaker } from './speaker';
+  import type { Question, SubmitResult, Grade } from './types';
 
-const app = new EnglishTrainingApp();
+  const app = new EnglishTrainingApp();
+  const SESSION_COUNT = 10;
 
-/* Reactive state */
-let currentQuestion = $state(null);
-let showResult = $state(false);
-let showHint = $state(false);
-let showExample = $state(false);
-let progressText = $state('Question 1 of 10');
-let isSessionComplete = $state(false);
+  /* Reactive state */
+  let currentQuestion: Question | null = $state(null);
+  let progress = $state('');
+  let answer = $state('');
+  let result: SubmitResult | null = $state(null);
+  let showResult = $state(false);
+  let showHint = $state(false);
+  let showExample = $state(false);
+  let sessionComplete = $state(false);
+  let isSpeaking = $state(false);
 
-/* Start session */
-function startSession() {
-  app.startSession();
-  currentQuestion = app.getCurrentQuestion();
-  updateProgress();
-}
+  /* Svelte mount */
+  onMount(() => startSession());
 
-/* Update progress display */
-function updateProgress() {
-  if (!currentQuestion) {
-    progressText = '🎉 Session Complete!';
-    isSessionComplete = true;
-    return;
-  }
-  progressText = `Question ${currentQuestion.id} of 10`;
-}
-
-/* Render current question to UI */
-function renderQuestion() {
-  if (!currentQuestion) {
-    // Session complete already handled in startSession
-    return;
-  }
-  // UI updates handled by event listeners
-}
-
-/* Submit answer */
-function submitAnswer() {
-  const userAnswer = answerInput.value.trim();
-  if (!userAnswer) {
-    alert('Please type an answer first.');
-    return;
+  /* Start a new session */
+  function startSession() {
+    app.startSession();
+    currentQuestion = app.getCurrentQuestion();
+    progress = `Question 1 of ${SESSION_COUNT}`;
+    sessionComplete = false;
+    answer = '';
+    showResult = false;
+    showHint = false;
+    showExample = false;
+    resultEl.classList.add('hidden');
+    hintEl.classList.add('hidden');
+    exampleEl.classList.add('hidden');
   }
 
-  const result = app.submitAnswer(userAnswer);
-  if (!result) return;
+  /* Update progress display */
+  function updateProgress() {
+    if (!currentQuestion) {
+      progress = '🎉 Session Complete!';
+      sessionComplete = true;
+      return;
+    }
+    progress = `Question ${currentQuestion.id} of ${SESSION_COUNT}`;
+  }
 
-  showResult = true;
-  showHint = true;
-  showExample = true;
-  
-  resultEl.className = `result ${result.grade.toLowerCase()}`;
-  resultEl.classList.remove('hidden');
-  resultEl.innerHTML = `<strong>${result.grade}</strong> (Score: ${result.score})<br>${result.feedback}`;
+  /* Submit answer */
+  function submitAnswer() {
+    const uAnswer = answer.trim();
+    if (!uAnswer) {
+      alert('Please type an answer first.');
+      return;
+    }
 
-  hintEl.classList.remove('hidden');
-  hintEl.textContent = result.hint;
+    result = app.submitAnswer(uAnswer);
+    if (!result) return;
 
-  exampleEl.classList.remove('hidden');
-  exampleEl.textContent = `Example: "${result.example}"`;
+    showResult = true;
+    showHint = true;
+    showExample = true;
 
-  // Hide input, show next
-  inputArea.style.display = 'none';
-  nextArea.style.display = 'block';
-}
+    resultEl.className = `result ${result.grade.toLowerCase()}`;
+    resultEl.classList.remove('hidden');
+    resultEl.innerHTML = `<strong>${result.grade}</strong> (Score: ${result.score})<br>${result.feedback}`;
 
-/* Handle reveal answer */
-function handleReveal() {
-  if (!currentQuestion) return;
-  
-  exampleEl.classList.remove('hidden');
-  exampleEl.textContent = `Answer: "${currentQuestion.answer}"`;
-  
-  // Advance to next question
-  app.currentIndex++;
-  setTimeout(() => {
+    hintEl.classList.remove('hidden');
+    hintEl.textContent = result.hint;
+
+    exampleEl.classList.remove('hidden');
+    exampleEl.textContent = `Example: "${result.example}"`;
+
+    inputArea.style.display = 'none';
+    nextArea.style.display = 'block';
+  }
+
+  /* Handle reveal answer */
+  function handleReveal() {
+    if (!currentQuestion) return;
+
+    exampleEl.classList.remove('hidden');
+    exampleEl.textContent = `Answer: "${currentQuestion.answer}"`;
+
+    // Advance to next question
+    app.currentIndex++;
+    setTimeout(() => {
+      currentQuestion = app.getCurrentQuestion();
+      updateProgress();
+      showResult = false;
+      showHint = false;
+      showExample = false;
+      resultEl.classList.add('hidden');
+      hintEl.classList.add('hidden');
+      exampleEl.classList.add('hidden');
+      inputArea.style.display = 'block';
+      nextArea.style.display = 'none';
+    }, 1500);
+  }
+
+  /* Handle speak button */
+  async function handleSpeak() {
+    if (!currentQuestion) return;
+
+    speakBtn.disabled = true;
+    speakBtn.textContent = '🔊 Speaking...';
+
+    await speaker.initialize();
+    await speaker.speak(currentQuestion.question);
+
+    speakBtn.disabled = false;
+    speakBtn.textContent = '🔊 Listen';
+  }
+
+  /* Handle next button */
+  function handleNext() {
     currentQuestion = app.getCurrentQuestion();
     updateProgress();
     showResult = false;
@@ -88,36 +123,7 @@ function handleReveal() {
     exampleEl.classList.add('hidden');
     inputArea.style.display = 'block';
     nextArea.style.display = 'none';
-  }, 1500);
-}
-
-/* Handle speak button */
-async function handleSpeak() {
-  if (!currentQuestion) return;
-  
-  speakBtn.disabled = true;
-  speakBtn.textContent = '🔊 Speaking...';
-
-  await speaker.initialize();
-  await speaker.speak(currentQuestion.question);
-
-  speakBtn.disabled = false;
-  speakBtn.textContent = '🔊 Listen';
-}
-
-/* Handle next button */
-function handleNext() {
-  currentQuestion = app.getCurrentQuestion();
-  updateProgress();
-  showResult = false;
-  showHint = false;
-  showExample = false;
-  resultEl.classList.add('hidden');
-  hintEl.classList.add('hidden');
-  exampleEl.classList.add('hidden');
-  inputArea.style.display = 'block';
-  nextArea.style.display = 'none';
-}
+  }
 </script>
 
 <template>
@@ -128,9 +134,9 @@ function handleNext() {
     </header>
 
     <div class="card">
-      <div id="progress" class="progress">{progressText}</div>
-      <div class="situation" id="situation">{#if currentQuestion}📍 {currentQuestion.situation}{/}</div>
-      <div class="question" id="question">{#if currentQuestion}{currentQuestion.question}{/}</div>
+      <div id="progress" class="progress">{progress}</div>
+      <div class="situation" id="situation">{currentQuestion ? `📍 ${currentQuestion.situation}` : ''}</div>
+      <div class="question" id="question">{currentQuestion ? currentQuestion.question : ''}</div>
 
       <div id="input-area">
         <textarea id="answer" placeholder="Type your 3-word answer..."></textarea>
@@ -252,6 +258,5 @@ function handleNext() {
     border-radius: 6px;
     margin-top: 10px;
   }
-  :global(.progress) { text-align: center; color: #667eea; font-weight: 600; margin-bottom: 10px; }
   :global(.hidden) { display: none !important; }
 </style>
