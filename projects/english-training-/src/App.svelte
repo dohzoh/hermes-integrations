@@ -1,6 +1,6 @@
 <script lang="ts">
   import { EnglishTrainingApp } from './main';
-  import { speaker } from './speaker';
+  import { onMount } from 'svelte';
   import type { Question, SubmitResult, Grade } from './types';
 
   const app = new EnglishTrainingApp();
