@@ -2,59 +2,98 @@
  * Speaker Module
  * Handles text-to-speech functionality for reading questions aloud
  * Uses Web Speech API (Speech Synthesis Engine)
+ *
+ * Browser-only module. In Node (tests) it exposes a stub that records
+ * the most recent utterance so behavior can be verified.
  */
 
 class Speaker {
   constructor() {
     this.synthesis = null;
     this.isInitialized = false;
+    this.voice = null;
+    this.lastUtterance = null;
   }
-  
+
   /**
-   * Initialize the speech synthesis engine
+   * Initialize the speech synthesis engine.
+   * Returns true in browser, false in Node/test environments.
    */
   async initialize() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      // No DOM available (Node, tests). Stay uninitialized.
+      this.isInitialized = false;
+      return false;
+    }
+
     try {
-      // Create the speech synthesis object
-      this.synthesis = new (window.SpeechSynthesis || window.webkitSpeechSynthesis)();
+      this.synthesis = window.SpeechSynthesis || window.webkitSpeechSynthesis;
+      if (!this.synthesis) {
+        this.isInitialized = false;
+        return false;
+      }
+
+      // Voices load asynchronously in many browsers; wait briefly.
+      if (this.synthesis.getVoices().length === 0) {
+        await new Promise((resolve) => {
+          const handler = () => {
+            this.synthesis.removeEventListener?.('voiceschanged', handler);
+            resolve();
+          };
+          this.synthesis.addEventListener?.('voiceschanged', handler);
+          // Fallback timeout
+          setTimeout(resolve, 500);
+        });
+      }
+
+      this.voice = pickEnglishVoice(this.synthesis.getVoices());
       this.isInitialized = true;
-      console.log('Speaker initialized successfully.');
       return true;
     } catch (error) {
-      console.error('Failed to initialize speaker:', error.message);
       this.isInitialized = false;
       return false;
     }
   }
-  
+
   /**
-   * Speak a given text
-   * @param {string} text - The text to speak
-   * @returns {Promise<void>}
+   * Speak a given text. Resolves when the utterance has finished.
+   * @param {string} text
+   * @returns {Promise<boolean>} true if the utterance was queued, false otherwise
    */
   async speak(text) {
+    if (!text) return false;
+
     if (!this.isInitialized) {
-      await this.initialize();
-    }
-    
-    try {
-      // Set the voice (optional - uses default)
-      // This can be customized based on locale
-      const voice = this.synthesis.getVoices();
-      if (voice.length > 0) {
-        this.synthesis.setVoice(voice[0]); // Use first available voice
+      const ok = await this.initialize();
+      if (!ok) {
+        // No synthesis available; record for tests/UI fallback.
+        this.lastUtterance = text;
+        return false;
       }
-      
-      // Speak the text
-      await this.synthesis.speak(text);
-      console.log(`Speaked: "${text}"`);
-      return true;
-    } catch (error) {
-      console.error('Speaking failed:', error.message);
+    }
+
+    if (typeof window === 'undefined' || typeof SpeechSynthesisUtterance === 'undefined') {
+      this.lastUtterance = text;
       return false;
     }
+
+    return new Promise((resolve) => {
+      try {
+        const utter = new SpeechSynthesisUtterance(text);
+        if (this.voice) utter.voice = this.voice;
+        utter.lang = 'en-US';
+        utter.rate = 0.95;
+        utter.pitch = 1.0;
+        utter.onend = () => resolve(true);
+        utter.onerror = () => resolve(false);
+        this.lastUtterance = text;
+        this.synthesis.speak(utter);
+      } catch {
+        resolve(false);
+      }
+    });
   }
-  
+
   /**
    * Check if the speaker is ready
    * @returns {boolean}
@@ -62,18 +101,24 @@ class Speaker {
   isReady() {
     return this.isInitialized;
   }
-  
+
   /**
    * Stop speaking
    */
   stop() {
-    if (this.synthesis) {
+    if (this.synthesis && typeof this.synthesis.cancel === 'function') {
       this.synthesis.cancel();
-      this.synthesis = null;
-      this.isInitialized = false;
     }
   }
 }
 
+function pickEnglishVoice(voices) {
+  if (!voices || voices.length === 0) return null;
+  // Prefer an English voice.
+  const english = voices.find((v) => /^en[-_]/i.test(v.lang));
+  return english || voices[0];
+}
+
 // Export singleton instance
 export const speaker = new Speaker();
+export { Speaker };
